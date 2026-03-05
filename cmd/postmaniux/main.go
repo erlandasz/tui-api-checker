@@ -12,6 +12,8 @@ import (
 	"github.com/erlandas/postmaniux/internal/envmanager"
 	"github.com/erlandas/postmaniux/internal/httpclient"
 	"github.com/erlandas/postmaniux/internal/storage"
+	"github.com/erlandas/postmaniux/internal/tui/envpicker"
+	"github.com/erlandas/postmaniux/internal/tui/help"
 	"github.com/erlandas/postmaniux/internal/tui/reqeditor"
 	"github.com/erlandas/postmaniux/internal/tui/respview"
 	"github.com/erlandas/postmaniux/internal/tui/tree"
@@ -31,6 +33,8 @@ type model struct {
 	tree        tree.Model
 	reqEditor   reqeditor.Model
 	respView    respview.Model
+	envPicker   envpicker.Model
+	helpOverlay help.Model
 	store       *storage.FileStore
 	client      *httpclient.Client
 	activeEnv   *domain.Environment
@@ -57,12 +61,24 @@ func initialModel(store *storage.FileStore) model {
 		}
 	}
 
+	// Load environments for picker
+	envNames, _ := store.ListEnvironments(ctx)
+	var envs []domain.Environment
+	for _, n := range envNames {
+		env, err := store.LoadEnvironment(ctx, n)
+		if err == nil {
+			envs = append(envs, env)
+		}
+	}
+
 	m := model{
-		tree:      tree.New(collections),
-		reqEditor: reqeditor.New(),
-		respView:  respview.New(),
-		store:     store,
-		client:    httpclient.NewClient(),
+		tree:        tree.New(collections),
+		reqEditor:   reqeditor.New(),
+		respView:    respview.New(),
+		envPicker:   envpicker.New(envs),
+		helpOverlay: help.New(),
+		store:       store,
+		client:      httpclient.NewClient(),
 	}
 	m.tree.SetFocused(true)
 	return m
@@ -79,13 +95,44 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyPressMsg:
+		// When help overlay is visible, delegate all input to it
+		if m.helpOverlay.Visible() {
+			var cmd tea.Cmd
+			m.helpOverlay, cmd = m.helpOverlay.Update(msg)
+			return m, cmd
+		}
+
+		// When env picker is visible, delegate all input to it
+		if m.envPicker.Visible() {
+			var cmd tea.Cmd
+			m.envPicker, cmd = m.envPicker.Update(msg)
+			return m, cmd
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "ctrl+w":
 			m.cycleFocus()
 			return m, nil
+		case "ctrl+e":
+			m.envPicker.Toggle()
+			return m, nil
+		case "?":
+			m.helpOverlay.Toggle()
+			return m, nil
 		}
+
+	case help.DismissMsg:
+		return m, nil
+
+	case envpicker.EnvSelectedMsg:
+		env := msg.Env
+		m.activeEnv = &env
+		return m, nil
+
+	case envpicker.DismissMsg:
+		return m, nil
 
 	case tree.RequestSelectedMsg:
 		m.reqEditor.SetRequest(msg.Request)
@@ -204,6 +251,22 @@ func (m model) View() tea.View {
 	rightSide := lipgloss.JoinVertical(lipgloss.Left, topPane, bottomPane)
 	layout := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightSide)
 
+	// Overlay help if visible
+	if m.helpOverlay.Visible() {
+		overlay := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.helpOverlay.View())
+		v := tea.NewView(overlay)
+		v.AltScreen = true
+		return v
+	}
+
+	// Overlay env picker if visible
+	if m.envPicker.Visible() {
+		overlay := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.envPicker.View())
+		v := tea.NewView(overlay)
+		v.AltScreen = true
+		return v
+	}
+
 	v := tea.NewView(layout)
 	v.AltScreen = true
 	return v
@@ -217,7 +280,6 @@ func main() {
 	}
 
 	store := storage.NewFileStore(filepath.Join(home, ".postmaniux"))
-	// bubbletea v2 uses alt screen by default
 	p := tea.NewProgram(initialModel(store))
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
