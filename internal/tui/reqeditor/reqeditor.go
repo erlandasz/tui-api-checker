@@ -60,6 +60,9 @@ func (t Tab) String() string {
 // SendRequestMsg tells the parent to execute this request.
 type SendRequestMsg struct{ Request domain.Request }
 
+// CopyAsCurlMsg tells the parent to copy this request as a curl command.
+type CopyAsCurlMsg struct{ Request domain.Request }
+
 // SaveRequestMsg tells the parent to persist this request to disk.
 type SaveRequestMsg struct {
 	Collection string
@@ -205,6 +208,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "ctrl+enter":
 			return m, func() tea.Msg {
 				return SendRequestMsg{Request: m.request}
+			}
+		case "ctrl+y":
+			return m, func() tea.Msg {
+				return CopyAsCurlMsg{Request: m.request}
 			}
 		}
 	}

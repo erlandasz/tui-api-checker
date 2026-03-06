@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -244,6 +247,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
+	case reqeditor.CopyAsCurlMsg:
+		req := msg.Request
+		if m.activeEnv != nil {
+			req = envmanager.ResolveRequest(req, *m.activeEnv)
+		}
+		curl := buildCurl(req)
+		if err := copyToClipboard(curl); err != nil {
+			m.err = err
+			m.status = fmt.Sprintf("Clipboard error: %v", err)
+		} else {
+			m.status = "Copied curl to clipboard"
+		}
+		return m, nil
+
 	case reqeditor.SendRequestMsg:
 		req := msg.Request
 		if m.activeEnv != nil {
@@ -399,6 +416,49 @@ func (m model) View() tea.View {
 	v := tea.NewView(layout)
 	v.AltScreen = true
 	return v
+}
+
+func buildCurl(req domain.Request) string {
+	method := req.Method
+	if method == "" {
+		method = "GET"
+	}
+
+	// Build URL with query params
+	reqURL := req.URL
+	if len(req.Params) > 0 {
+		params := url.Values{}
+		for k, v := range req.Params {
+			params.Set(k, v)
+		}
+		sep := "?"
+		if strings.Contains(reqURL, "?") {
+			sep = "&"
+		}
+		reqURL += sep + params.Encode()
+	}
+
+	var parts []string
+	parts = append(parts, fmt.Sprintf("curl -X %s", method))
+
+	for k, v := range req.Headers {
+		parts = append(parts, fmt.Sprintf("  -H '%s: %s'", k, v))
+	}
+
+	if req.Body != "" {
+		escaped := strings.ReplaceAll(req.Body, "'", "'\\''")
+		parts = append(parts, fmt.Sprintf("  -d '%s'", escaped))
+	}
+
+	parts = append(parts, fmt.Sprintf("  '%s'", reqURL))
+
+	return strings.Join(parts, " \\\n")
+}
+
+func copyToClipboard(text string) error {
+	cmd := exec.Command("pbcopy")
+	cmd.Stdin = strings.NewReader(text)
+	return cmd.Run()
 }
 
 func main() {
