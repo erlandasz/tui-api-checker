@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestResolve(t *testing.T) {

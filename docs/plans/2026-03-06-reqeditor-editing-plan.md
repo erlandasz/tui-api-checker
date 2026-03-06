@@ -81,7 +81,7 @@ case "k", "up":
 
 Update View to show a cursor indicator `>` next to the active field.
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(reqeditor): add edit types, state fields, and field navigation"`
 
@@ -118,7 +118,7 @@ case "m":
 	}
 ```
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(reqeditor): add method cycling with m key"`
 
@@ -170,7 +170,7 @@ if m.editMode == modeURL {
 
 Update View: when `m.editMode == modeURL`, render URL line as `METHOD editBuf█` instead of `METHOD request.URL`.
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(reqeditor): add inline URL editing"`
 
@@ -223,7 +223,7 @@ When `activeField == fieldContent` on Headers/Params tab, `j`/`k` navigates `kvC
 
 Update `renderMap` to show cursor on the active row when focused.
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(reqeditor): add KV list display and row navigation"`
 
@@ -292,7 +292,7 @@ Both KV modes handle backspace/typing same as URL mode.
 
 Update View to show edit buffer with cursor when editing a KV row.
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(reqeditor): add KV add, edit, delete"`
 
@@ -386,7 +386,7 @@ default:
 
 Update View to render bodyLines with cursor when in modeBody.
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(reqeditor): add body text area editing"`
 
@@ -407,7 +407,7 @@ Add these entries to the bindings slice:
 {"Esc", "Cancel / exit edit mode"},
 ```
 
-**Run:** `go build ./cmd/postmaniux/ && go test ./...`
+**Run:** `go build ./cmd/ratatuile/ && go test ./...`
 
 **Commit:** `git commit -m "feat(help): add request editing keybindings"`
 
@@ -415,7 +415,7 @@ Add these entries to the bindings slice:
 
 ### Task 8: Smoke test
 
-1. Run `go run ./cmd/postmaniux/`
+1. Run `go run ./cmd/ratatuile/`
 2. Select a request in tree, Ctrl+W to focus request editor
 3. Verify j/k moves between Method/URL/Content
 4. Press `m` on Method — cycles through GET/POST/PUT/PATCH/DELETE

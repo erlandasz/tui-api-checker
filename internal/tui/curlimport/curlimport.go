@@ -3,8 +3,8 @@ package curlimport
 import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/curlparse"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/curlparse"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 type screen int

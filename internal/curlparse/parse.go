@@ -4,7 +4,7 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // Parse converts a curl command string into a domain.Request.

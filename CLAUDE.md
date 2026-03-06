@@ -4,12 +4,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-postmaniux is a keyboard-driven TUI API client (Postman alternative) built as a single Go binary. No cloud, no Electron. Uses Bubble Tea v2 for the terminal UI.
+ratatuile is a keyboard-driven TUI API client (Postman alternative) built as a single Go binary. No cloud, no Electron. Uses Bubble Tea v2 for the terminal UI.
 
 ## Commands
 
 ```bash
-make build      # Build binary to bin/postmaniux
+make build      # Build binary to bin/ratatuile
 make run        # Run directly via go run
 make test       # Run all tests: go test ./...
 make lint       # Lint: go vet ./...
@@ -22,9 +22,9 @@ go test ./internal/storage/ -run TestSaveAndLoad
 
 Three-layer design: **TUI → Core → Storage**
 
-- `cmd/postmaniux/main.go` — Entry point and root Bubble Tea model. Owns the three-pane layout, focus cycling (Ctrl+W), and message routing between child components.
+- `cmd/ratatuile/main.go` — Entry point and root Bubble Tea model. Owns the three-pane layout, focus cycling (Ctrl+W), and message routing between child components.
 - `internal/domain/` — Core types: `Request`, `Collection`, `Environment`. No dependencies on TUI or storage.
-- `internal/storage/` — `FileStore` persists collections/environments as JSON under `~/.postmaniux/`. Collections stored as `collections/{name}/collection.json`, environments as `environments/{name}.json`.
+- `internal/storage/` — `FileStore` persists collections/environments as JSON under `~/.ratatuile/`. Collections stored as `collections/{name}/collection.json`, environments as `environments/{name}.json`.
 - `internal/httpclient/` — Wraps `net/http` to execute `domain.Request` and return a `Response` with status, headers, body, duration, size.
 - `internal/envmanager/` — `{{variable}}` template resolution. `ResolveRequest()` substitutes placeholders from active environment before sending. `DateVars()` provides built-in date variables (`$today`, `$startOfWeek`, etc.). `KnownVars()` returns all resolvable variable names for UI highlighting/autocomplete.
 - `internal/tui/` — Each sub-package is a self-contained Bubble Tea component:

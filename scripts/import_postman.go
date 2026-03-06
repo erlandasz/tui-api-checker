@@ -1,4 +1,4 @@
-// One-off script to import a Postman data export into postmaniux storage format.
+// One-off script to import a Postman data export into rataTUIle storage format.
 //
 // Usage:
 //
@@ -69,7 +69,7 @@ type postmanEnvValue struct {
 	Enabled bool   `json:"enabled"`
 }
 
-// postmaniux domain types
+// rataTUIle domain types
 
 type request struct {
 	Name    string            `json:"name"`
@@ -101,7 +101,7 @@ func main() {
 	if err != nil {
 		fatal("getting home dir: %v", err)
 	}
-	outRoot := filepath.Join(home, ".postmaniux")
+	outRoot := filepath.Join(home, ".ratatuile")
 
 	// Import collections
 	collDir := filepath.Join(exportDir, "collection")

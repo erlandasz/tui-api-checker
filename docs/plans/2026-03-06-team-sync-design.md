@@ -9,7 +9,7 @@ Teams need to share collections without setting up a git repo or running infrast
 - Entire collections are the sync unit (not individual requests)
 - Push/pull is manual (no live sync)
 - Client-side AES-256-GCM encryption with a shared group passphrase
-- Central Cloudflare Worker + KV at `sync.postmaniux.dev` as the storage backend
+- Central Cloudflare Worker + KV at `sync.ratatuile.dev` as the storage backend
 - One group key per team, namespaces all collections under that team
 - Remote wins on pull (overwrites local, no merge)
 - TUI sync modal for push/pull operations
@@ -18,7 +18,7 @@ Teams need to share collections without setting up a git repo or running infrast
 
 ```
 +---------------+      AES-encrypted JSON       +----------------------+
-|  postmaniux   | <-------- push/pull ---------> |  Cloudflare Worker   |
+|  ratatuile   | <-------- push/pull ---------> |  Cloudflare Worker   |
 |   (client)    |                                |  + KV store          |
 +---------------+                                +----------------------+
        |                                                   |
@@ -31,7 +31,7 @@ Teams need to share collections without setting up a git repo or running infrast
 
 1. User enters a group passphrase (e.g., `"my-team-secret"`)
 2. **Namespace** = first 16 hex chars of `sha256(passphrase)` — public, used as KV key prefix
-3. **Encryption key** = `scrypt(passphrase, salt="postmaniux")` -> 256-bit AES key
+3. **Encryption key** = `scrypt(passphrase, salt="ratatuile")` -> 256-bit AES key
 4. KV key format: `{namespace}/{collectionName}`
 5. KV value format: `nonce (12 bytes) || AES-GCM ciphertext`
 
@@ -62,8 +62,8 @@ New package with:
 
 ## Settings Persistence
 
-- `~/.postmaniux/group_key` — stores the group passphrase (plaintext, same pattern as `active_env`)
-- `~/.postmaniux/sync_endpoint` — optional, defaults to `https://sync.postmaniux.dev`
+- `~/.ratatuile/group_key` — stores the group passphrase (plaintext, same pattern as `active_env`)
+- `~/.ratatuile/sync_endpoint` — optional, defaults to `https://sync.ratatuile.dev`
 
 ## TUI: `internal/tui/syncmodal/`
 

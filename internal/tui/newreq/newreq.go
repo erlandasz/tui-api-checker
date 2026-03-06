@@ -3,7 +3,7 @@ package newreq
 import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // RequestCreatedMsg is sent when the user confirms a new request name.

@@ -1,4 +1,4 @@
-# postmaniux
+# rataTUIle
 
 A fast, keyboard-driven TUI API client. Single Go binary, no cloud, no bloat.
 
@@ -33,16 +33,16 @@ A fast, keyboard-driven TUI API client. Single Go binary, no cloud, no bloat.
 ## Install
 
 ```bash
-go install github.com/erlandas/postmaniux/cmd/postmaniux@latest
+go install github.com/erlandas/ratatuile/cmd/ratatuile@latest
 ```
 
 Or build from source:
 
 ```bash
-git clone https://github.com/erlandas/postmaniux.git
-cd postmaniux
+git clone https://github.com/erlandas/ratatuile.git
+cd ratatuile
 make build
-./bin/postmaniux
+./bin/ratatuile
 ```
 
 ## Keybindings
@@ -88,10 +88,10 @@ make build
 
 ## Data Storage
 
-All data is stored as JSON files in `~/.postmaniux/`:
+All data is stored as JSON files in `~/.ratatuile/`:
 
 ```
-~/.postmaniux/
+~/.ratatuile/
   collections/
     my-api/
       collection.json
@@ -138,12 +138,12 @@ Export your Postman data (Settings → Data → Export Data), then run:
 go run scripts/import_postman.go /path/to/postman-export-dir
 ```
 
-The export directory should contain `collection/` and/or `environment/` subdirectories with JSON files. The script imports both collections (with nested folder structure preserved) and environments into `~/.postmaniux/`.
+The export directory should contain `collection/` and/or `environment/` subdirectories with JSON files. The script imports both collections (with nested folder structure preserved) and environments into `~/.ratatuile/`.
 
 ## Development
 
 ```bash
-make build   # Build to bin/postmaniux
+make build   # Build to bin/ratatuile
 make run     # Run via go run
 make test    # Run all tests
 make lint    # go vet

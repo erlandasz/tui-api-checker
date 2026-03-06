@@ -6,7 +6,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestClient_Do(t *testing.T) {

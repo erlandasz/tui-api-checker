@@ -57,7 +57,7 @@ Modal overlay with a single text input.
 
 **New method:** `AddRequest(collection string, req domain.Request)` — appends request node, expands collection if collapsed, moves cursor to new node.
 
-### 3. Root Model Changes: `cmd/postmaniux/main.go`
+### 3. Root Model Changes: `cmd/ratatuile/main.go`
 
 **New state:** `newReq newreq.Model`
 

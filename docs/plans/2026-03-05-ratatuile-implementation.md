@@ -1,4 +1,4 @@
-# Postmaniux Implementation Plan
+# RataTUIle Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. REQUIRED: Follow go-expertise skill for all Go code.
 
@@ -16,19 +16,19 @@
 
 **Files:**
 - Create: `go.mod`
-- Create: `cmd/postmaniux/main.go`
+- Create: `cmd/ratatuile/main.go`
 - Create: `Makefile`
 
 **Step 1: Initialize Go module**
 
 ```bash
-cd /Users/erlandas/Documents/personal/postmaniux
-go mod init github.com/erlandas/postmaniux
+cd /Users/erlandas/Documents/personal/ratatuile
+go mod init github.com/erlandas/ratatuile
 ```
 
 **Step 2: Create entry point**
 
-Create `cmd/postmaniux/main.go`:
+Create `cmd/ratatuile/main.go`:
 
 ```go
 package main
@@ -58,7 +58,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() tea.View {
-	return tea.NewView("postmaniux - press q to quit\n")
+	return tea.NewView("ratatuile - press q to quit\n")
 }
 
 func main() {
@@ -76,7 +76,7 @@ func main() {
 .PHONY: build test lint run
 
 build:
-	go build -o bin/postmaniux ./cmd/postmaniux
+	go build -o bin/ratatuile ./cmd/ratatuile
 
 test:
 	go test ./...
@@ -86,7 +86,7 @@ lint:
 	golangci-lint run
 
 run:
-	go run ./cmd/postmaniux
+	go run ./cmd/ratatuile
 ```
 
 **Step 4: Install dependencies and verify**
@@ -246,7 +246,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestStore_SaveAndLoadCollection(t *testing.T) {
@@ -343,7 +343,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // Why: FileStore takes a root dir via constructor — dependency injection,
@@ -490,7 +490,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestClient_Do(t *testing.T) {
@@ -552,7 +552,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // Response holds the result of an HTTP request execution.
@@ -659,7 +659,7 @@ package envmanager
 import (
 	"testing"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestResolve(t *testing.T) {
@@ -724,7 +724,7 @@ package envmanager
 import (
 	"strings"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // Resolve replaces {{key}} placeholders with values from vars.
@@ -796,7 +796,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // Why: each node is either a collection (folder) or a request (leaf).
@@ -992,7 +992,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 type Tab int
@@ -1150,7 +1150,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/httpclient"
+	"github.com/erlandas/ratatuile/internal/httpclient"
 )
 
 type Model struct {
@@ -1268,13 +1268,13 @@ git add internal/tui/respview/ && git commit -m "feat: add response viewer TUI c
 ### Task 9: Root Model — Wire Three-Pane Layout
 
 **Files:**
-- Modify: `cmd/postmaniux/main.go` (replace skeleton)
+- Modify: `cmd/ratatuile/main.go` (replace skeleton)
 
 Wire the tree, request editor, and response viewer into a three-pane layout with focus cycling (Ctrl+W) and request execution (Ctrl+S).
 
 **Step 1: Rewrite main.go with full root model**
 
-Replace `cmd/postmaniux/main.go` with:
+Replace `cmd/ratatuile/main.go` with:
 
 ```go
 package main
@@ -1287,13 +1287,13 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
-	"github.com/erlandas/postmaniux/internal/envmanager"
-	"github.com/erlandas/postmaniux/internal/httpclient"
-	"github.com/erlandas/postmaniux/internal/storage"
-	"github.com/erlandas/postmaniux/internal/tui/reqeditor"
-	"github.com/erlandas/postmaniux/internal/tui/respview"
-	"github.com/erlandas/postmaniux/internal/tui/tree"
+	"github.com/erlandas/ratatuile/internal/domain"
+	"github.com/erlandas/ratatuile/internal/envmanager"
+	"github.com/erlandas/ratatuile/internal/httpclient"
+	"github.com/erlandas/ratatuile/internal/storage"
+	"github.com/erlandas/ratatuile/internal/tui/reqeditor"
+	"github.com/erlandas/ratatuile/internal/tui/respview"
+	"github.com/erlandas/ratatuile/internal/tui/tree"
 )
 
 // Why: Pane enum for focus management. Cycling through panes with Ctrl+W.
@@ -1493,7 +1493,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	store := storage.NewFileStore(filepath.Join(home, ".postmaniux"))
+	store := storage.NewFileStore(filepath.Join(home, ".ratatuile"))
 	p := tea.NewProgram(initialModel(store), tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
@@ -1505,7 +1505,7 @@ func main() {
 **Step 2: Verify it compiles**
 
 ```bash
-go build ./cmd/postmaniux/
+go build ./cmd/ratatuile/
 ```
 
 **Step 3: Manual test**
@@ -1519,7 +1519,7 @@ Expected: Three-pane layout renders. Ctrl+W cycles focus (border color changes).
 **Step 4: Commit**
 
 ```bash
-git add cmd/postmaniux/main.go && git commit -m "feat: wire three-pane layout with focus cycling"
+git add cmd/ratatuile/main.go && git commit -m "feat: wire three-pane layout with focus cycling"
 ```
 
 ---
@@ -1528,7 +1528,7 @@ git add cmd/postmaniux/main.go && git commit -m "feat: wire three-pane layout wi
 
 **Files:**
 - Create: `internal/tui/envpicker/envpicker.go`
-- Modify: `cmd/postmaniux/main.go`
+- Modify: `cmd/ratatuile/main.go`
 
 An overlay that lists environments and lets the user pick one with j/k + Enter. Ctrl+E toggles it.
 
@@ -1542,7 +1542,7 @@ package envpicker
 import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 type EnvSelectedMsg struct{ Env domain.Environment }
@@ -1619,7 +1619,7 @@ func (m Model) View() string {
 
 **Step 2: Wire into root model**
 
-Add to `cmd/postmaniux/main.go`:
+Add to `cmd/ratatuile/main.go`:
 - Import `envpicker` package
 - Add `envPicker envpicker.Model` field to `model` struct
 - In `initialModel`, load environments and create picker
@@ -1631,7 +1631,7 @@ Add to `cmd/postmaniux/main.go`:
 **Step 3: Verify it compiles and test manually**
 
 ```bash
-go build ./cmd/postmaniux/ && make run
+go build ./cmd/ratatuile/ && make run
 ```
 
 Expected: Ctrl+E shows overlay, j/k navigates, Enter selects, Esc dismisses.
@@ -1639,7 +1639,7 @@ Expected: Ctrl+E shows overlay, j/k navigates, Enter selects, Esc dismisses.
 **Step 4: Commit**
 
 ```bash
-git add internal/tui/envpicker/ cmd/postmaniux/main.go && git commit -m "feat: add environment switching with Ctrl+E"
+git add internal/tui/envpicker/ cmd/ratatuile/main.go && git commit -m "feat: add environment switching with Ctrl+E"
 ```
 
 ---
@@ -1648,7 +1648,7 @@ git add internal/tui/envpicker/ cmd/postmaniux/main.go && git commit -m "feat: a
 
 **Files:**
 - Create: `internal/tui/help/help.go`
-- Modify: `cmd/postmaniux/main.go`
+- Modify: `cmd/ratatuile/main.go`
 
 Toggled with `?`. Shows keybinding reference.
 
@@ -1727,7 +1727,7 @@ func (m Model) View() string {
 
 **Step 2: Wire into root model**
 
-Add to `cmd/postmaniux/main.go`:
+Add to `cmd/ratatuile/main.go`:
 - Import `help` package
 - Add `help help.Model` field
 - Handle `?` key to toggle help
@@ -1737,7 +1737,7 @@ Add to `cmd/postmaniux/main.go`:
 **Step 3: Verify and test**
 
 ```bash
-go build ./cmd/postmaniux/ && make run
+go build ./cmd/ratatuile/ && make run
 ```
 
 Expected: `?` shows help overlay, `?` or Esc dismisses it.
@@ -1745,7 +1745,7 @@ Expected: `?` shows help overlay, `?` or Esc dismisses it.
 **Step 4: Commit**
 
 ```bash
-git add internal/tui/help/ cmd/postmaniux/main.go && git commit -m "feat: add help overlay with ? toggle"
+git add internal/tui/help/ cmd/ratatuile/main.go && git commit -m "feat: add help overlay with ? toggle"
 ```
 
 ---
@@ -1755,11 +1755,11 @@ git add internal/tui/help/ cmd/postmaniux/main.go && git commit -m "feat: add he
 **Step 1: Create sample data**
 
 ```bash
-mkdir -p ~/.postmaniux/collections/sample-api
-mkdir -p ~/.postmaniux/environments
+mkdir -p ~/.ratatuile/collections/sample-api
+mkdir -p ~/.ratatuile/environments
 ```
 
-Write `~/.postmaniux/collections/sample-api/collection.json`:
+Write `~/.ratatuile/collections/sample-api/collection.json`:
 ```json
 {
   "name": "sample-api",
@@ -1779,7 +1779,7 @@ Write `~/.postmaniux/collections/sample-api/collection.json`:
 }
 ```
 
-Write `~/.postmaniux/environments/jsonplaceholder.json`:
+Write `~/.ratatuile/environments/jsonplaceholder.json`:
 ```json
 {
   "name": "jsonplaceholder",
@@ -1806,5 +1806,5 @@ make run
 **Step 3: Final commit**
 
 ```bash
-git add -A && git commit -m "feat: complete MVP postmaniux TUI"
+git add -A && git commit -m "feat: complete MVP ratatuile TUI"
 ```

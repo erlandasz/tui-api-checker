@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // Response holds the result of an HTTP request execution.

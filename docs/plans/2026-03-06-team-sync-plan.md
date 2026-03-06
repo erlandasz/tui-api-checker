@@ -110,7 +110,7 @@ func DeriveKey(passphrase string) (namespace string, aesKey []byte) {
 	hash := sha256.Sum256([]byte(passphrase))
 	namespace = fmt.Sprintf("%x", hash[:8])
 
-	key, err := scrypt.Key([]byte(passphrase), []byte("postmaniux"), 32768, 8, 1, 32)
+	key, err := scrypt.Key([]byte(passphrase), []byte("ratatuile"), 32768, 8, 1, 32)
 	if err != nil {
 		panic("scrypt failed: " + err.Error())
 	}
@@ -270,7 +270,7 @@ import (
 	"net/http"
 )
 
-const DefaultEndpoint = "https://sync.postmaniux.dev"
+const DefaultEndpoint = "https://sync.ratatuile.dev"
 
 type Client struct {
 	endpoint   string
@@ -383,7 +383,7 @@ func TestSyncEndpoint(t *testing.T) {
 	dir := t.TempDir()
 	s := NewFileStore(dir)
 
-	if got := s.LoadSyncEndpoint(); got != "https://sync.postmaniux.dev" {
+	if got := s.LoadSyncEndpoint(); got != "https://sync.ratatuile.dev" {
 		t.Fatalf("expected default endpoint, got %q", got)
 	}
 
@@ -439,7 +439,7 @@ func (s *FileStore) SaveSyncEndpoint(endpoint string) error {
 func (s *FileStore) LoadSyncEndpoint() string {
 	data, err := os.ReadFile(s.syncEndpointPath())
 	if err != nil {
-		return "https://sync.postmaniux.dev"
+		return "https://sync.ratatuile.dev"
 	}
 	return strings.TrimSpace(string(data))
 }
@@ -732,15 +732,15 @@ git commit -m "feat(tui): add sync modal component"
 ### Task 5: Wire sync modal into main.go
 
 **Files:**
-- Modify: `cmd/postmaniux/main.go`
+- Modify: `cmd/ratatuile/main.go`
 
 **Step 1: Add import and field**
 
 Add to imports:
 
 ```go
-"github.com/erlandas/postmaniux/internal/tui/syncmodal"
-psync "github.com/erlandas/postmaniux/internal/sync"
+"github.com/erlandas/ratatuile/internal/tui/syncmodal"
+psync "github.com/erlandas/ratatuile/internal/sync"
 ```
 
 Add field to `model` struct:
@@ -890,13 +890,13 @@ if m.syncModal.Visible() {
 
 **Step 7: Verify it compiles**
 
-Run: `go build ./cmd/postmaniux/`
+Run: `go build ./cmd/ratatuile/`
 Expected: Success
 
 **Step 8: Commit**
 
 ```bash
-git add cmd/postmaniux/main.go
+git add cmd/ratatuile/main.go
 git commit -m "feat: wire sync modal into main TUI (Ctrl+G)"
 ```
 
@@ -912,7 +912,7 @@ git commit -m "feat: wire sync modal into main TUI (Ctrl+G)"
 
 ```toml
 # worker/sync/wrangler.toml
-name = "postmaniux-sync"
+name = "ratatuile-sync"
 main = "src/index.js"
 compatibility_date = "2024-01-01"
 
@@ -988,7 +988,7 @@ git commit -m "feat: add Cloudflare Worker for sync KV storage"
 
 **Files:**
 - Modify: `internal/tui/help/help.go`
-- Modify: `cmd/postmaniux/main.go` (status bar hints)
+- Modify: `cmd/ratatuile/main.go` (status bar hints)
 
 **Step 1: Add Ctrl+G to help bindings**
 
@@ -1008,13 +1008,13 @@ hintSep + hintKey.Render("^G") + hintDesc.Render(" sync")
 
 **Step 3: Verify it compiles**
 
-Run: `go build ./cmd/postmaniux/`
+Run: `go build ./cmd/ratatuile/`
 Expected: Success
 
 **Step 4: Commit**
 
 ```bash
-git add internal/tui/help/help.go cmd/postmaniux/main.go
+git add internal/tui/help/help.go cmd/ratatuile/main.go
 git commit -m "feat: add sync keybinding to help overlay and status bar"
 ```
 
@@ -1023,13 +1023,13 @@ git commit -m "feat: add sync keybinding to help overlay and status bar"
 ### Task 8: End-to-end manual test
 
 **Steps:**
-1. Run: `go run ./cmd/postmaniux/`
+1. Run: `go run ./cmd/ratatuile/`
 2. Press `Ctrl+G` — should see "Enter Group Key" prompt
 3. Type a passphrase, press Enter — key saved, list screen appears
 4. (Worker must be deployed for push/pull to work against real endpoint)
 5. Verify Esc closes the modal
-6. Verify `~/.postmaniux/group_key` contains the passphrase
+6. Verify `~/.ratatuile/group_key` contains the passphrase
 7. Run: `go test ./...` — all tests pass
 
-Run: `go test ./... && go build ./cmd/postmaniux/`
+Run: `go test ./... && go build ./cmd/ratatuile/`
 Expected: All tests pass, binary builds

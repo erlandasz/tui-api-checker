@@ -8,8 +8,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
-	"github.com/erlandas/postmaniux/internal/envmanager"
+	"github.com/erlandas/ratatuile/internal/domain"
+	"github.com/erlandas/ratatuile/internal/envmanager"
 )
 
 type editMode int

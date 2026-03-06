@@ -124,7 +124,7 @@ For `screenEdit`: render title `"Edit: <env.Name>"`, then KV rows with cursor pr
 ### Task 4: Wire EnvSavedMsg in main.go
 
 **Files:**
-- Modify: `cmd/postmaniux/main.go:153-160`
+- Modify: `cmd/ratatuile/main.go:153-160`
 
 **Step 1: Add handler after the EnvSelectedMsg case**
 

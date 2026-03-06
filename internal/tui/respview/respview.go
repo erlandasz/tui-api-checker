@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/httpclient"
+	"github.com/erlandas/ratatuile/internal/httpclient"
 )
 
 type Model struct {

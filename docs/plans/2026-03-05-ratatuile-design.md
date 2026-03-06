@@ -1,4 +1,4 @@
-# postmaniux - TUI API Client
+# ratatuile - TUI API Client
 
 A fast, keyboard-driven alternative to Postman. Single Go binary, no cloud, no bloat.
 
@@ -34,10 +34,10 @@ Three-pane multi-panel layout:
 
 ## Data Format
 
-JSON files stored in `~/.postmaniux/`:
+JSON files stored in `~/.ratatuile/`:
 
 ```
-~/.postmaniux/
+~/.ratatuile/
   collections/
     my-api/
       collection.json

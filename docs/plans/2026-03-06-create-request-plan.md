@@ -27,7 +27,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestNewreq_NotVisibleByDefault(t *testing.T) {
@@ -137,7 +137,7 @@ package newreq
 import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 type RequestCreatedMsg struct {
@@ -327,13 +327,13 @@ git commit -m "feat: add n keybinding and AddRequest to tree component"
 ### Task 3: Wire newreq modal into root model
 
 **Files:**
-- Modify: `cmd/postmaniux/main.go`
+- Modify: `cmd/ratatuile/main.go`
 
 **Step 1: Add import**
 
 Add to imports (line 16):
 ```go
-"github.com/erlandas/postmaniux/internal/tui/newreq"
+"github.com/erlandas/ratatuile/internal/tui/newreq"
 ```
 
 **Step 2: Add field to `model` struct (after line 37)**
@@ -405,7 +405,7 @@ if m.newReq.Visible() {
 
 **Step 7: Build and verify**
 
-Run: `go build ./cmd/postmaniux/`
+Run: `go build ./cmd/ratatuile/`
 Expected: compiles without errors
 
 **Step 8: Run all tests**
@@ -416,7 +416,7 @@ Expected: all PASS
 **Step 9: Commit**
 
 ```bash
-git add cmd/postmaniux/main.go
+git add cmd/ratatuile/main.go
 git commit -m "feat: wire newreq modal into root model with persistence"
 ```
 
@@ -452,8 +452,8 @@ git commit -m "feat: add n keybinding to help overlay"
 ### Task 5: Manual smoke test
 
 **Steps:**
-1. Create a test collection: `mkdir -p ~/.postmaniux/collections/demo && echo '{"name":"demo","requests":[]}' > ~/.postmaniux/collections/demo/collection.json`
-2. Run: `go run ./cmd/postmaniux/`
+1. Create a test collection: `mkdir -p ~/.ratatuile/collections/demo && echo '{"name":"demo","requests":[]}' > ~/.ratatuile/collections/demo/collection.json`
+2. Run: `go run ./cmd/ratatuile/`
 3. Verify tree shows "demo" collection
 4. Press `n` — modal should appear
 5. Type "Hello World" and press Enter

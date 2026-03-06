@@ -31,7 +31,7 @@ All changes scoped to two files:
 - `View()` renders either the env list or the variable editor
 - On Esc from `screenEdit`: emit `EnvSavedMsg` with updated environment
 
-### `cmd/postmaniux/main.go`
+### `cmd/ratatuile/main.go`
 
 - Handle `EnvSavedMsg`: call `store.SaveEnvironment()`, update `activeEnv` if it matches
 

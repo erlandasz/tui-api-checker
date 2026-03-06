@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 func TestStore_SaveAndLoadCollection(t *testing.T) {

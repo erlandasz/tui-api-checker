@@ -11,17 +11,17 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	"github.com/erlandas/postmaniux/internal/domain"
-	"github.com/erlandas/postmaniux/internal/envmanager"
-	"github.com/erlandas/postmaniux/internal/httpclient"
-	"github.com/erlandas/postmaniux/internal/storage"
-	"github.com/erlandas/postmaniux/internal/tui/curlimport"
-	"github.com/erlandas/postmaniux/internal/tui/envpicker"
-	"github.com/erlandas/postmaniux/internal/tui/help"
-	"github.com/erlandas/postmaniux/internal/tui/newreq"
-	"github.com/erlandas/postmaniux/internal/tui/reqeditor"
-	"github.com/erlandas/postmaniux/internal/tui/respview"
-	"github.com/erlandas/postmaniux/internal/tui/tree"
+	"github.com/erlandas/ratatuile/internal/domain"
+	"github.com/erlandas/ratatuile/internal/envmanager"
+	"github.com/erlandas/ratatuile/internal/httpclient"
+	"github.com/erlandas/ratatuile/internal/storage"
+	"github.com/erlandas/ratatuile/internal/tui/curlimport"
+	"github.com/erlandas/ratatuile/internal/tui/envpicker"
+	"github.com/erlandas/ratatuile/internal/tui/help"
+	"github.com/erlandas/ratatuile/internal/tui/newreq"
+	"github.com/erlandas/ratatuile/internal/tui/reqeditor"
+	"github.com/erlandas/ratatuile/internal/tui/respview"
+	"github.com/erlandas/ratatuile/internal/tui/tree"
 )
 
 // Pane enum for focus management. Cycling through panes with Ctrl+W.
@@ -534,7 +534,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	store := storage.NewFileStore(filepath.Join(home, ".postmaniux"))
+	store := storage.NewFileStore(filepath.Join(home, ".ratatuile"))
 	p := tea.NewProgram(initialModel(store))
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)

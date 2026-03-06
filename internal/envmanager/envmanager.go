@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/ratatuile/internal/domain"
 )
 
 // DateVars returns built-in date variables computed from now.
