@@ -41,8 +41,9 @@ type Model struct {
 	editIdx  int
 	kvRows   []kvRow
 	kvCursor int
-	editMode editMode
-	editBuf  string
+	editMode   editMode
+	editBuf    string
+	editCursor int
 }
 
 func New(envs []domain.Environment) Model {
@@ -145,6 +146,7 @@ func (m Model) updateEditNone(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.kvCursor = len(m.kvRows) - 1
 		m.editMode = editKey
 		m.editBuf = ""
+		m.editCursor = 0
 	case "d":
 		if len(m.kvRows) > 0 {
 			m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
@@ -156,8 +158,9 @@ func (m Model) updateEditNone(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		if len(m.kvRows) > 0 {
 			m.editMode = editKey
 			m.editBuf = m.kvRows[m.kvCursor].Key
+			m.editCursor = len(m.editBuf)
 		}
-	case "escape":
+	case "esc", "escape":
 		env := m.buildEnvFromRows()
 		m.screen = screenList
 		return m, func() tea.Msg { return EnvSavedMsg{Env: env} }
@@ -171,7 +174,8 @@ func (m Model) updateEditKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.kvRows[m.kvCursor].Key = m.editBuf
 		m.editMode = editValue
 		m.editBuf = m.kvRows[m.kvCursor].Value
-	case "escape":
+		m.editCursor = len(m.editBuf)
+	case "esc", "escape":
 		if m.kvRows[m.kvCursor].Key == "" && m.kvRows[m.kvCursor].Value == "" {
 			m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
 			if m.kvCursor >= len(m.kvRows) && m.kvCursor > 0 {
@@ -179,15 +183,8 @@ func (m Model) updateEditKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 			}
 		}
 		m.editMode = editNone
-	case "backspace":
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
-		}
 	default:
-		key := msg.Key()
-		if key.Text != "" {
-			m.editBuf += key.Text
-		}
+		m.handleEditBufKey(msg)
 	}
 	return m, nil
 }
@@ -197,19 +194,44 @@ func (m Model) updateEditValue(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	case "enter":
 		m.kvRows[m.kvCursor].Value = m.editBuf
 		m.editMode = editNone
-	case "escape":
+	case "esc", "escape":
 		m.editMode = editNone
+	default:
+		m.handleEditBufKey(msg)
+	}
+	return m, nil
+}
+
+func (m *Model) handleEditBufKey(msg tea.KeyPressMsg) {
+	switch msg.String() {
+	case "left":
+		if m.editCursor > 0 {
+			m.editCursor--
+		}
+	case "right":
+		if m.editCursor < len(m.editBuf) {
+			m.editCursor++
+		}
 	case "backspace":
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		if m.editCursor > 0 {
+			m.editBuf = m.editBuf[:m.editCursor-1] + m.editBuf[m.editCursor:]
+			m.editCursor--
 		}
 	default:
 		key := msg.Key()
 		if key.Text != "" {
-			m.editBuf += key.Text
+			m.editBuf = m.editBuf[:m.editCursor] + key.Text + m.editBuf[m.editCursor:]
+			m.editCursor += len(key.Text)
 		}
 	}
-	return m, nil
+}
+
+func (m Model) renderEditBuf() string {
+	c := m.editCursor
+	if c > len(m.editBuf) {
+		c = len(m.editBuf)
+	}
+	return m.editBuf[:c] + "\u2588" + m.editBuf[c:]
 }
 
 func (m Model) View() string {
@@ -264,9 +286,9 @@ func (m Model) viewEditScreen() string {
 				prefix = cursorStyle.Render("> ")
 			}
 			if i == m.kvCursor && m.editMode == editKey {
-				s += fmt.Sprintf("%s%s\u2588: %s", prefix, m.editBuf, row.Value)
+				s += fmt.Sprintf("%s%s: %s", prefix, m.renderEditBuf(), row.Value)
 			} else if i == m.kvCursor && m.editMode == editValue {
-				s += fmt.Sprintf("%s%s: %s\u2588", prefix, row.Key, m.editBuf)
+				s += fmt.Sprintf("%s%s: %s", prefix, row.Key, m.renderEditBuf())
 			} else {
 				s += fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value)
 			}

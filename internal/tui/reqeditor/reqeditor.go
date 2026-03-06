@@ -77,6 +77,7 @@ type Model struct {
 	editMode      editMode
 	activeField   field
 	editBuf       string
+	editCursor    int
 	kvRows        []kvRow
 	kvCursor      int
 	bodyLines     []string
@@ -143,6 +144,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				m.kvCursor = len(m.kvRows) - 1
 				m.editMode = modeKVKey
 				m.editBuf = ""
+				m.editCursor = 0
 			}
 		case "d":
 			if m.activeField == fieldContent && (m.activeTab == TabHeaders || m.activeTab == TabParams) {
@@ -159,12 +161,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 				if len(m.kvRows) > 0 {
 					m.editMode = modeKVKey
 					m.editBuf = m.kvRows[m.kvCursor].Key
+					m.editCursor = len(m.editBuf)
 				}
 			} else if m.activeField == fieldContent && m.activeTab == TabBody {
 				m.editMode = modeBody
 			} else if m.activeField == fieldURL {
 				m.editMode = modeURL
 				m.editBuf = m.request.URL
+				m.editCursor = len(m.editBuf)
 			}
 		case "m":
 			if m.activeField == fieldMethod {
@@ -225,15 +229,8 @@ func (m Model) updateURLMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.editMode = modeNone
 	case "esc", "escape":
 		m.editMode = modeNone
-	case "backspace":
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
-		}
 	default:
-		key := msg.Key()
-		if key.Text != "" {
-			m.editBuf += key.Text
-		}
+		m.handleEditBufKey(msg)
 	}
 	return m, nil
 }
@@ -244,6 +241,7 @@ func (m Model) updateKVKeyMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.kvRows[m.kvCursor].Key = m.editBuf
 		m.editMode = modeKVValue
 		m.editBuf = m.kvRows[m.kvCursor].Value
+		m.editCursor = len(m.editBuf)
 	case "esc", "escape":
 		if m.kvRows[m.kvCursor].Key == "" && m.kvRows[m.kvCursor].Value == "" {
 			m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
@@ -252,15 +250,8 @@ func (m Model) updateKVKeyMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 			}
 		}
 		m.editMode = modeNone
-	case "backspace":
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
-		}
 	default:
-		key := msg.Key()
-		if key.Text != "" {
-			m.editBuf += key.Text
-		}
+		m.handleEditBufKey(msg)
 	}
 	return m, nil
 }
@@ -272,18 +263,10 @@ func (m Model) updateKVValueMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.syncKVToRequest()
 		m.editMode = modeNone
 	case "esc", "escape":
-		// Sync whatever we have (key was already saved in KVKey mode)
 		m.syncKVToRequest()
 		m.editMode = modeNone
-	case "backspace":
-		if len(m.editBuf) > 0 {
-			m.editBuf = m.editBuf[:len(m.editBuf)-1]
-		}
 	default:
-		key := msg.Key()
-		if key.Text != "" {
-			m.editBuf += key.Text
-		}
+		m.handleEditBufKey(msg)
 	}
 	return m, nil
 }
@@ -356,6 +339,30 @@ func (m Model) updateBodyMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *Model) handleEditBufKey(msg tea.KeyPressMsg) {
+	switch msg.String() {
+	case "left":
+		if m.editCursor > 0 {
+			m.editCursor--
+		}
+	case "right":
+		if m.editCursor < len(m.editBuf) {
+			m.editCursor++
+		}
+	case "backspace":
+		if m.editCursor > 0 {
+			m.editBuf = m.editBuf[:m.editCursor-1] + m.editBuf[m.editCursor:]
+			m.editCursor--
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			m.editBuf = m.editBuf[:m.editCursor] + key.Text + m.editBuf[m.editCursor:]
+			m.editCursor += len(key.Text)
+		}
+	}
+}
+
 func (m *Model) syncKVFromRequest() {
 	m.kvRows = nil
 	var src map[string]string
@@ -426,7 +433,7 @@ func (m Model) View() string {
 
 	s += methodPrefix + methodStyle.Render(method) + "\n"
 	if m.editMode == modeURL {
-		s += "> " + m.editBuf + "\u2588\n\n"
+		s += "> " + m.renderEditBuf() + "\n\n"
 	} else {
 		s += urlPrefix + m.highlightVars(m.request.URL) + "\n\n"
 	}
@@ -477,14 +484,22 @@ func (m Model) renderKVRows() string {
 			prefix = "> "
 		}
 		if i == m.kvCursor && m.editMode == modeKVKey {
-			lines = append(lines, fmt.Sprintf("%s%s\u2588: %s", prefix, m.editBuf, m.highlightVars(row.Value)))
+			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, m.renderEditBuf(), m.highlightVars(row.Value)))
 		} else if i == m.kvCursor && m.editMode == modeKVValue {
-			lines = append(lines, fmt.Sprintf("%s%s: %s\u2588", prefix, row.Key, m.editBuf))
+			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, m.renderEditBuf()))
 		} else {
 			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, m.highlightVars(row.Value)))
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (m Model) renderEditBuf() string {
+	c := m.editCursor
+	if c > len(m.editBuf) {
+		c = len(m.editBuf)
+	}
+	return m.editBuf[:c] + "\u2588" + m.editBuf[c:]
 }
 
 var varPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
