@@ -33,6 +33,10 @@ type RequestSelectedMsg struct {
 	Request    domain.Request
 }
 
+type NewRequestMsg struct {
+	Collection string
+}
+
 func New(collections []domain.Collection) Model {
 	var nodes []Node
 	for _, col := range collections {
@@ -95,6 +99,14 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					}
 				}
 			}
+		case "n":
+			if m.cursor < len(visible) {
+				node := visible[m.cursor]
+				col := node.Collection
+				return m, func() tea.Msg {
+					return NewRequestMsg{Collection: col}
+				}
+			}
 		}
 	}
 	return m, nil
@@ -122,6 +134,47 @@ func (m Model) visibleNodes() []Node {
 		}
 	}
 	return visible
+}
+
+func (m *Model) AddRequest(collection string, req domain.Request) {
+	// Find insertion point: after last node of this collection
+	insertIdx := -1
+	folderIdx := -1
+	for i, n := range m.nodes {
+		if n.IsFolder && n.Collection == collection {
+			folderIdx = i
+			m.nodes[i].Expanded = true
+			insertIdx = i + 1
+		} else if folderIdx >= 0 && n.Collection == collection {
+			insertIdx = i + 1
+		} else if folderIdx >= 0 && n.Collection != collection {
+			break
+		}
+	}
+	if insertIdx < 0 {
+		return
+	}
+
+	newNode := Node{
+		Name:       req.Name,
+		IsFolder:   false,
+		Depth:      1,
+		Collection: collection,
+		Request:    &req,
+	}
+
+	// Insert node at position
+	m.nodes = append(m.nodes, Node{})
+	copy(m.nodes[insertIdx+1:], m.nodes[insertIdx:])
+	m.nodes[insertIdx] = newNode
+
+	// Move cursor to new node in visible list
+	for i, n := range m.visibleNodes() {
+		if !n.IsFolder && n.Request != nil && n.Request.Name == req.Name && n.Collection == collection {
+			m.cursor = i
+			break
+		}
+	}
 }
 
 func (m Model) View() string {
