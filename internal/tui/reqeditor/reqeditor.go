@@ -81,6 +81,7 @@ func New() Model {
 func (m *Model) SetRequest(r domain.Request) {
 	m.request = r
 	m.syncKVFromRequest()
+	m.syncBodyFromRequest()
 }
 func (m *Model) SetSize(w, h int)            { m.width = w; m.height = h }
 func (m *Model) SetFocused(f bool)           { m.focused = f }
@@ -144,6 +145,8 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 					m.editMode = modeKVKey
 					m.editBuf = m.kvRows[m.kvCursor].Key
 				}
+			} else if m.activeField == fieldContent && m.activeTab == TabBody {
+				m.editMode = modeBody
 			} else if m.activeField == fieldURL {
 				m.editMode = modeURL
 				m.editBuf = m.request.URL
@@ -166,9 +169,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "tab":
 			m.activeTab = (m.activeTab + 1) % 3
 			m.syncKVFromRequest()
+			m.syncBodyFromRequest()
 		case "shift+tab":
 			m.activeTab = (m.activeTab + 2) % 3
 			m.syncKVFromRequest()
+			m.syncBodyFromRequest()
 		case "ctrl+s":
 			return m, func() tea.Msg {
 				return SendRequestMsg{Request: m.request}
@@ -186,6 +191,8 @@ func (m Model) updateEditMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		return m.updateKVKeyMode(msg)
 	case modeKVValue:
 		return m.updateKVValueMode(msg)
+	case modeBody:
+		return m.updateBodyMode(msg)
 	}
 	return m, nil
 }
@@ -258,6 +265,74 @@ func (m Model) updateKVValueMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) updateBodyMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	// Ensure bodyLines always has at least one element
+	if len(m.bodyLines) == 0 {
+		m.bodyLines = []string{""}
+	}
+
+	switch msg.String() {
+	case "esc", "escape":
+		m.syncBodyToRequest()
+		m.editMode = modeNone
+	case "enter":
+		line := m.bodyLines[m.bodyCursorRow]
+		m.bodyLines[m.bodyCursorRow] = line[:m.bodyCursorCol]
+		rest := line[m.bodyCursorCol:]
+		newLines := make([]string, 0, len(m.bodyLines)+1)
+		newLines = append(newLines, m.bodyLines[:m.bodyCursorRow+1]...)
+		newLines = append(newLines, rest)
+		if m.bodyCursorRow+1 < len(m.bodyLines) {
+			newLines = append(newLines, m.bodyLines[m.bodyCursorRow+1:]...)
+		}
+		m.bodyLines = newLines
+		m.bodyCursorRow++
+		m.bodyCursorCol = 0
+	case "backspace":
+		if m.bodyCursorCol > 0 {
+			line := m.bodyLines[m.bodyCursorRow]
+			m.bodyLines[m.bodyCursorRow] = line[:m.bodyCursorCol-1] + line[m.bodyCursorCol:]
+			m.bodyCursorCol--
+		} else if m.bodyCursorRow > 0 {
+			prev := m.bodyLines[m.bodyCursorRow-1]
+			m.bodyCursorCol = len(prev)
+			m.bodyLines[m.bodyCursorRow-1] = prev + m.bodyLines[m.bodyCursorRow]
+			m.bodyLines = append(m.bodyLines[:m.bodyCursorRow], m.bodyLines[m.bodyCursorRow+1:]...)
+			m.bodyCursorRow--
+		}
+	case "left":
+		if m.bodyCursorCol > 0 {
+			m.bodyCursorCol--
+		}
+	case "right":
+		if m.bodyCursorCol < len(m.bodyLines[m.bodyCursorRow]) {
+			m.bodyCursorCol++
+		}
+	case "up":
+		if m.bodyCursorRow > 0 {
+			m.bodyCursorRow--
+			if m.bodyCursorCol > len(m.bodyLines[m.bodyCursorRow]) {
+				m.bodyCursorCol = len(m.bodyLines[m.bodyCursorRow])
+			}
+		}
+	case "down":
+		if m.bodyCursorRow < len(m.bodyLines)-1 {
+			m.bodyCursorRow++
+			if m.bodyCursorCol > len(m.bodyLines[m.bodyCursorRow]) {
+				m.bodyCursorCol = len(m.bodyLines[m.bodyCursorRow])
+			}
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			line := m.bodyLines[m.bodyCursorRow]
+			m.bodyLines[m.bodyCursorRow] = line[:m.bodyCursorCol] + key.Text + line[m.bodyCursorCol:]
+			m.bodyCursorCol += len(key.Text)
+		}
+	}
+	return m, nil
+}
+
 func (m *Model) syncKVFromRequest() {
 	m.kvRows = nil
 	var src map[string]string
@@ -286,6 +361,20 @@ func (m *Model) syncKVToRequest() {
 	case TabParams:
 		m.request.Params = kv
 	}
+}
+
+func (m *Model) syncBodyFromRequest() {
+	if m.request.Body == "" {
+		m.bodyLines = []string{""}
+	} else {
+		m.bodyLines = strings.Split(m.request.Body, "\n")
+	}
+	m.bodyCursorRow = 0
+	m.bodyCursorCol = 0
+}
+
+func (m *Model) syncBodyToRequest() {
+	m.request.Body = strings.Join(m.bodyLines, "\n")
 }
 
 func (m Model) View() string {
@@ -341,10 +430,14 @@ func (m Model) View() string {
 	case TabHeaders, TabParams:
 		s += m.renderKVRows()
 	case TabBody:
-		if m.request.Body != "" {
-			s += m.request.Body
+		if m.editMode == modeBody {
+			s += m.renderBodyEdit()
 		} else {
-			s += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("(no body)")
+			if m.request.Body != "" {
+				s += m.request.Body
+			} else {
+				s += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("(no body)")
+			}
 		}
 	}
 
@@ -367,6 +460,25 @@ func (m Model) renderKVRows() string {
 			lines = append(lines, fmt.Sprintf("%s%s: %s\u2588", prefix, row.Key, m.editBuf))
 		} else {
 			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value))
+		}
+	}
+	return strings.Join(lines, "\n")
+}
+
+func (m Model) renderBodyEdit() string {
+	if len(m.bodyLines) == 0 {
+		m.bodyLines = []string{""}
+	}
+	var lines []string
+	for i, line := range m.bodyLines {
+		if i == m.bodyCursorRow {
+			col := m.bodyCursorCol
+			if col > len(line) {
+				col = len(line)
+			}
+			lines = append(lines, line[:col]+"\u2588"+line[col:])
+		} else {
+			lines = append(lines, line)
 		}
 	}
 	return strings.Join(lines, "\n")
