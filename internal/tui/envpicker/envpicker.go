@@ -8,11 +8,39 @@ import (
 
 type EnvSelectedMsg struct{ Env domain.Environment }
 type DismissMsg struct{}
+type EnvSavedMsg struct{ Env domain.Environment }
+
+type screen int
+
+const (
+	screenList screen = iota
+	screenEdit
+)
+
+type editMode int
+
+const (
+	editNone editMode = iota
+	editKey
+	editValue
+)
+
+type kvRow struct {
+	Key   string
+	Value string
+}
 
 type Model struct {
 	envs    []domain.Environment
 	cursor  int
 	visible bool
+
+	screen   screen
+	editIdx  int
+	kvRows   []kvRow
+	kvCursor int
+	editMode editMode
+	editBuf  string
 }
 
 func New(envs []domain.Environment) Model {
