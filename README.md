@@ -6,11 +6,15 @@ A fast, keyboard-driven TUI API client. Single Go binary, no cloud, no bloat.
 
 ## Features
 
-- **Collection browser** — tree view to organize requests into folders
+- **Collection browser** — tree view with nested sub-folders, expand/collapse with Enter
 - **Request editor** — method, URL, headers, params, JSON body with tabbed sections
 - **Response viewer** — color-coded status, pretty-printed JSON, scrollable body
-- **Environments** — `{{variable}}` substitution, quick-switch with Ctrl+E
-- **Keyboard-first** — no mouse needed, vim-style navigation
+- **Environments** — `{{variable}}` substitution, quick-switch with Ctrl+E, inline variable editor
+- **Built-in date variables** — `{{$today}}`, `{{$startOfWeek}}`, etc. auto-resolved
+- **Variable autocomplete** — type `{{` to get a dropdown of matching variables, Tab to insert
+- **Variable highlighting** — known variables shown in green, unknown in red
+- **Persistence** — Ctrl+S saves request edits to disk
+- **Keyboard-first** — no mouse needed, vim-style navigation, arrow keys in edit fields
 
 ## Layout
 
@@ -43,16 +47,44 @@ make build
 
 ## Keybindings
 
-| Key        | Action             |
-|------------|--------------------|
-| `Ctrl+W`   | Cycle pane focus   |
-| `j` / `k`  | Navigate up/down   |
-| `Enter`    | Expand/select      |
-| `Tab`      | Switch editor tab  |
-| `Ctrl+S`   | Send request       |
-| `Ctrl+E`   | Switch environment |
-| `?`        | Help overlay       |
-| `q`        | Quit               |
+### Global
+
+| Key          | Action                              |
+|--------------|-------------------------------------|
+| `Ctrl+W`     | Cycle pane focus                    |
+| `Ctrl+E`     | Switch environment (e to edit vars) |
+| `?`          | Help overlay                        |
+| `q` / `Ctrl+C` | Quit                             |
+
+### Navigation
+
+| Key          | Action             |
+|--------------|--------------------|
+| `j` / `k`   | Navigate up/down   |
+| `Enter`      | Expand/select      |
+| `Tab`        | Switch editor tab  |
+| `n`          | New request (tree) |
+
+### Editing
+
+| Key          | Action                          |
+|--------------|---------------------------------|
+| `e` / `Enter`| Edit focused field              |
+| `a`          | Add header/param                |
+| `d`          | Delete header/param             |
+| `m`          | Cycle HTTP method               |
+| `Left`/`Right`| Move cursor in edit field      |
+| `Esc`        | Cancel / exit edit mode         |
+| `Ctrl+S`     | Save request to disk            |
+| `Ctrl+Enter` | Send request                    |
+
+### Autocomplete (in edit fields)
+
+| Key        | Action                              |
+|------------|-------------------------------------|
+| `{{`       | Opens variable dropdown             |
+| `Up`/`Down`| Navigate dropdown                   |
+| `Tab`      | Insert selected variable            |
 
 ## Data Storage
 
