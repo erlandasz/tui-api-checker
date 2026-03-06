@@ -22,11 +22,13 @@ type Node struct {
 }
 
 type Model struct {
-	nodes   []Node
-	cursor  int
-	focused bool
-	width   int
-	height  int
+	nodes     []Node
+	cursor    int
+	focused   bool
+	width     int
+	height    int
+	searching bool
+	search    string
 }
 
 // Why: messages for parent to know what was selected
@@ -103,6 +105,29 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	}
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		// Search mode input handling
+		if m.searching {
+			switch msg.String() {
+			case "escape":
+				m.searching = false
+				m.search = ""
+			case "enter":
+				m.searching = false
+				m.search = ""
+			case "backspace":
+				if len(m.search) > 0 {
+					m.search = m.search[:len(m.search)-1]
+					m.jumpToMatch()
+				}
+			default:
+				if t := msg.Key().Text; t != "" {
+					m.search += t
+					m.jumpToMatch()
+				}
+			}
+			return m, nil
+		}
+
 		visible := m.visibleNodes()
 		switch msg.String() {
 		case "j", "down":
@@ -113,6 +138,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.cursor > 0 {
 				m.cursor--
 			}
+		case "/":
+			m.searching = true
+			m.search = ""
 		case "enter":
 			if m.cursor < len(visible) {
 				node := visible[m.cursor]
@@ -138,6 +166,20 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) jumpToMatch() {
+	if m.search == "" {
+		return
+	}
+	query := strings.ToLower(m.search)
+	visible := m.visibleNodes()
+	for i, n := range visible {
+		if strings.Contains(strings.ToLower(n.Name), query) {
+			m.cursor = i
+			return
+		}
+	}
 }
 
 func (m *Model) toggleFolder(collection, path string) {
@@ -217,7 +259,12 @@ func (m Model) View() string {
 	dimStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
 
 	var s string
-	s += titleStyle.Render("Collections") + "\n\n"
+	if m.searching {
+		searchStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
+		s += searchStyle.Render("/"+m.search) + "█\n\n"
+	} else {
+		s += titleStyle.Render("Collections") + "\n\n"
+	}
 
 	for i, node := range visible {
 		prefix := "  "

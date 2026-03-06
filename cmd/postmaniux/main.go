@@ -382,11 +382,33 @@ func (m model) View() tea.View {
 	if m.err != nil {
 		statusFg = lipgloss.Color("196")
 	}
+	statusBg := lipgloss.Color("236")
 	statusStyle := lipgloss.NewStyle().
 		Foreground(statusFg).
-		Background(lipgloss.Color("236")).
-		Width(m.width)
-	statusBar := statusStyle.Render(" " + m.status)
+		Background(statusBg)
+	hintKey := lipgloss.NewStyle().
+		Bold(true).
+		Foreground(lipgloss.Color("86")).
+		Background(statusBg)
+	hintDesc := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("245")).
+		Background(statusBg)
+	hintSep := hintDesc.Render(" · ")
+	hints := hintKey.Render("^W") + hintDesc.Render(" focus") + hintSep +
+		hintKey.Render("^Enter") + hintDesc.Render(" send") + hintSep +
+		hintKey.Render("^S") + hintDesc.Render(" save") + hintSep +
+		hintKey.Render("^E") + hintDesc.Render(" env") + hintSep +
+		hintKey.Render("?") + hintDesc.Render(" help")
+	left := statusStyle.Render(" " + m.status)
+	hintsW := lipgloss.Width(hints)
+	statusLeftW := m.width - hintsW - 1
+	if statusLeftW < 0 {
+		statusLeftW = 0
+	}
+	statusBar := lipgloss.NewStyle().
+		Background(statusBg).
+		Width(m.width).
+		Render(lipgloss.NewStyle().Width(statusLeftW).Background(statusBg).Render(left) + " " + hints)
 	layout := lipgloss.JoinVertical(lipgloss.Left, contentLayout, statusBar)
 
 	// Overlay help if visible

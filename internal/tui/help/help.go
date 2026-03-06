@@ -58,6 +58,7 @@ func (m Model) View() string {
 		{"d", "Delete header/param"},
 		{"Esc", "Cancel / exit edit mode"},
 		{"?", "Toggle this help"},
+		{"/", "Search / jump to (in tree)"},
 		{"n", "New request (in tree)"},
 		{"q / Ctrl+C", "Quit"},
 	}
