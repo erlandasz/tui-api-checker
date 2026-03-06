@@ -86,6 +86,7 @@ func (m *Model) SetRequest(r domain.Request) {
 func (m *Model) SetSize(w, h int)            { m.width = w; m.height = h }
 func (m *Model) SetFocused(f bool)           { m.focused = f }
 func (m Model) Focused() bool                { return m.focused }
+func (m Model) Editing() bool                { return m.editMode != modeNone }
 func (m Model) Request() domain.Request      { return m.request }
 
 func (m Model) Init() tea.Cmd { return nil }
@@ -251,6 +252,8 @@ func (m Model) updateKVValueMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		m.syncKVToRequest()
 		m.editMode = modeNone
 	case "esc", "escape":
+		// Sync whatever we have (key was already saved in KVKey mode)
+		m.syncKVToRequest()
 		m.editMode = modeNone
 	case "backspace":
 		if len(m.editBuf) > 0 {
@@ -401,11 +404,10 @@ func (m Model) View() string {
 		urlPrefix = "> "
 	}
 
+	s += methodPrefix + methodStyle.Render(method) + "\n"
 	if m.editMode == modeURL {
-		s += methodPrefix + methodStyle.Render(method) + "\n"
-		s += methodStyle.Render(method) + " " + m.editBuf + "\u2588\n\n"
+		s += "> " + m.editBuf + "\u2588\n\n"
 	} else {
-		s += methodPrefix + methodStyle.Render(method) + "\n"
 		s += urlPrefix + m.request.URL + "\n\n"
 	}
 
@@ -466,11 +468,12 @@ func (m Model) renderKVRows() string {
 }
 
 func (m Model) renderBodyEdit() string {
-	if len(m.bodyLines) == 0 {
-		m.bodyLines = []string{""}
+	bodyLines := m.bodyLines
+	if len(bodyLines) == 0 {
+		bodyLines = []string{""}
 	}
 	var lines []string
-	for i, line := range m.bodyLines {
+	for i, line := range bodyLines {
 		if i == m.bodyCursorRow {
 			col := m.bodyCursorCol
 			if col > len(line) {

@@ -43,6 +43,7 @@ type model struct {
 	focusedPane pane
 	width       int
 	height      int
+	status      string
 	err         error
 }
 
@@ -119,9 +120,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// When reqeditor is editing, delegate all input to it
+		if m.focusedPane == paneRequest && m.reqEditor.Editing() {
+			var cmd tea.Cmd
+			m.reqEditor, cmd = m.reqEditor.Update(msg)
+			return m, cmd
+		}
+
 		switch msg.String() {
-		case "ctrl+c", "q":
+		case "ctrl+c":
 			return m, tea.Quit
+		case "q":
+			if m.focusedPane != paneRequest {
+				return m, tea.Quit
+			}
 		case "ctrl+w":
 			m.cycleFocus()
 			return m, nil
@@ -129,8 +141,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.envPicker.Toggle()
 			return m, nil
 		case "?":
-			m.helpOverlay.Toggle()
-			return m, nil
+			if m.focusedPane != paneRequest {
+				m.helpOverlay.Toggle()
+				return m, nil
+			}
 		}
 
 	case help.DismissMsg:
@@ -139,6 +153,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case envpicker.EnvSelectedMsg:
 		env := msg.Env
 		m.activeEnv = &env
+		m.status = fmt.Sprintf("Environment: %s", env.Name)
 		return m, nil
 
 	case envpicker.DismissMsg:
@@ -157,15 +172,18 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		col, err := m.store.LoadCollection(ctx, msg.Collection)
 		if err != nil {
 			m.err = err
+			m.status = fmt.Sprintf("Error: %v", err)
 			return m, nil
 		}
 		col.Requests = append(col.Requests, msg.Request)
 		if saveErr := m.store.SaveCollection(ctx, col); saveErr != nil {
 			m.err = saveErr
+			m.status = fmt.Sprintf("Error: %v", saveErr)
 			return m, nil
 		}
 		m.tree.AddRequest(msg.Collection, msg.Request)
 		m.reqEditor.SetRequest(msg.Request)
+		m.status = fmt.Sprintf("Created request: %s", msg.Request.Name)
 		return m, nil
 
 	case newreq.CancelledMsg:
@@ -176,14 +194,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.activeEnv != nil {
 			req = envmanager.ResolveRequest(req, *m.activeEnv)
 		}
+		m.status = "Sending request..."
 		return m, m.executeRequest(req)
 
 	case responseMsg:
 		if msg.err != nil {
 			m.err = msg.err
+			m.status = fmt.Sprintf("Error: %v", msg.err)
 		} else {
 			m.respView.SetResponse(msg.resp)
 			m.err = nil
+			m.status = fmt.Sprintf("Response: %d (%s)", msg.resp.StatusCode, msg.resp.Duration)
 		}
 		return m, nil
 	}
@@ -219,12 +240,13 @@ func (m *model) cycleFocus() {
 }
 
 func (m *model) layoutPanes() {
+	contentH := m.height - 1 // reserve 1 row for status bar
 	leftW := m.width * 30 / 100
 	rightW := m.width - leftW - 1
-	topH := m.height * 40 / 100
-	bottomH := m.height - topH - 1
+	topH := contentH * 40 / 100
+	bottomH := contentH - topH - 1
 
-	m.tree.SetSize(leftW, m.height)
+	m.tree.SetSize(leftW, contentH)
 	m.reqEditor.SetSize(rightW, topH)
 	m.respView.SetSize(rightW, bottomH)
 }
@@ -267,22 +289,33 @@ func (m model) View() tea.View {
 		respStyle = focusBorderStyle
 	}
 
-	leftPane := treeStyle.Width(leftW - 2).Height(m.height - 2).Render(m.tree.View())
+	statusH := 1
+	contentH := m.height - statusH
+
+	leftPane := treeStyle.Width(leftW - 2).Height(contentH - 2).Render(m.tree.View())
 	rightW := m.width - leftW - 1
-	topH := m.height * 40 / 100
-	bottomH := m.height - topH - 1
+	topH := contentH * 40 / 100
+	bottomH := contentH - topH - 1
 
 	topPane := reqStyle.Width(rightW - 2).Height(topH - 2).Render(m.reqEditor.View())
 	bottomPane := respStyle.Width(rightW - 2).Height(bottomH - 2).Render(m.respView.View())
 
-	// Error bar
-	if m.err != nil {
-		errLine := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Render(fmt.Sprintf("Error: %v", m.err))
-		_ = errLine
-	}
-
 	rightSide := lipgloss.JoinVertical(lipgloss.Left, topPane, bottomPane)
-	layout := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightSide)
+	contentLayout := lipgloss.JoinHorizontal(lipgloss.Top, leftPane, rightSide)
+	// Clamp content so status bar is always visible
+	contentLayout = lipgloss.NewStyle().MaxHeight(contentH).Render(contentLayout)
+
+	// Status bar
+	statusFg := lipgloss.Color("252")
+	if m.err != nil {
+		statusFg = lipgloss.Color("196")
+	}
+	statusStyle := lipgloss.NewStyle().
+		Foreground(statusFg).
+		Background(lipgloss.Color("236")).
+		Width(m.width)
+	statusBar := statusStyle.Render(" " + m.status)
+	layout := lipgloss.JoinVertical(lipgloss.Left, contentLayout, statusBar)
 
 	// Overlay help if visible
 	if m.helpOverlay.Visible() {
