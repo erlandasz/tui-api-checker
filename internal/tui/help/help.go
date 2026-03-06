@@ -49,7 +49,7 @@ func (m Model) View() string {
 		{"Enter", "Expand/select"},
 		{"Tab", "Switch editor tab"},
 		{"Ctrl+S", "Send request"},
-		{"Ctrl+E", "Switch environment"},
+		{"Ctrl+E", "Switch environment (e to edit vars)"},
 		{"m", "Cycle HTTP method"},
 		{"e / Enter", "Edit focused field"},
 		{"a", "Add header/param"},
