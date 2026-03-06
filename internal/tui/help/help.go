@@ -52,6 +52,7 @@ func (m Model) View() string {
 		{"Ctrl+Enter", "Send request"},
 		{"Ctrl+Y", "Copy as curl"},
 		{"Ctrl+E", "Switch environment (e to edit vars)"},
+		{"Ctrl+I", "Import curl command"},
 		{"m", "Cycle HTTP method"},
 		{"e / Enter", "Edit focused field"},
 		{"a", "Add header/param"},

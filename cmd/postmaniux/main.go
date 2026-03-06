@@ -15,6 +15,7 @@ import (
 	"github.com/erlandas/postmaniux/internal/envmanager"
 	"github.com/erlandas/postmaniux/internal/httpclient"
 	"github.com/erlandas/postmaniux/internal/storage"
+	"github.com/erlandas/postmaniux/internal/tui/curlimport"
 	"github.com/erlandas/postmaniux/internal/tui/envpicker"
 	"github.com/erlandas/postmaniux/internal/tui/help"
 	"github.com/erlandas/postmaniux/internal/tui/newreq"
@@ -40,6 +41,7 @@ type model struct {
 	envPicker   envpicker.Model
 	helpOverlay help.Model
 	newReq      newreq.Model
+	curlImport  curlimport.Model
 	store       *storage.FileStore
 	client      *httpclient.Client
 	activeEnv   *domain.Environment
@@ -84,6 +86,7 @@ func initialModel(store *storage.FileStore) model {
 		envPicker:   envpicker.New(envs),
 		helpOverlay: help.New(),
 		newReq:      newreq.New(),
+		curlImport:  curlimport.New(),
 		store:       store,
 		client:      httpclient.NewClient(),
 	}
@@ -139,6 +142,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// When curl import modal is visible, delegate all input to it
+		if m.curlImport.Visible() {
+			var cmd tea.Cmd
+			m.curlImport, cmd = m.curlImport.Update(msg)
+			return m, cmd
+		}
+
 		// When reqeditor is editing, delegate all input to it
 		if m.focusedPane == paneRequest && m.reqEditor.Editing() {
 			var cmd tea.Cmd
@@ -158,6 +168,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		case "ctrl+e":
 			m.envPicker.Toggle()
+			return m, nil
+		case "ctrl+i":
+			names, _ := m.store.ListCollections(context.Background())
+			m.curlImport.Show(names)
 			return m, nil
 		case "?":
 			if m.focusedPane != paneRequest {
@@ -223,6 +237,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case newreq.CancelledMsg:
+		return m, nil
+
+	case curlimport.ImportedMsg:
+		ctx := context.Background()
+		col, err := m.store.LoadCollection(ctx, msg.Collection)
+		if err != nil {
+			m.err = err
+			m.status = fmt.Sprintf("Error: %v", err)
+			return m, nil
+		}
+		col.Requests = append(col.Requests, msg.Request)
+		if saveErr := m.store.SaveCollection(ctx, col); saveErr != nil {
+			m.err = saveErr
+			m.status = fmt.Sprintf("Error: %v", saveErr)
+			return m, nil
+		}
+		m.tree.AddRequest(msg.Collection, msg.Request)
+		m.reqEditor.SetRequest(msg.Collection, msg.Request)
+		m.status = fmt.Sprintf("Imported: %s %s", msg.Request.Method, msg.Request.Name)
+		return m, nil
+
+	case curlimport.CancelledMsg:
 		return m, nil
 
 	case reqeditor.SaveRequestMsg:
@@ -422,6 +458,14 @@ func (m model) View() tea.View {
 	// Overlay env picker if visible
 	if m.envPicker.Visible() {
 		overlay := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.envPicker.View())
+		v := tea.NewView(overlay)
+		v.AltScreen = true
+		return v
+	}
+
+	// Overlay curl import if visible
+	if m.curlImport.Visible() {
+		overlay := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.curlImport.View())
 		v := tea.NewView(overlay)
 		v.AltScreen = true
 		return v
