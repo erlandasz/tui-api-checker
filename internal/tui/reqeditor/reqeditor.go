@@ -2,11 +2,13 @@ package reqeditor
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/erlandas/postmaniux/internal/domain"
+	"github.com/erlandas/postmaniux/internal/envmanager"
 )
 
 type editMode int
@@ -63,6 +65,7 @@ type Model struct {
 	focused   bool
 	width     int
 	height    int
+	knownVars map[string]bool
 
 	editMode      editMode
 	activeField   field
@@ -82,6 +85,9 @@ func (m *Model) SetRequest(r domain.Request) {
 	m.request = r
 	m.syncKVFromRequest()
 	m.syncBodyFromRequest()
+}
+func (m *Model) SetEnvironment(envVars map[string]string) {
+	m.knownVars = envmanager.KnownVars(envVars)
 }
 func (m *Model) SetSize(w, h int)            { m.width = w; m.height = h }
 func (m *Model) SetFocused(f bool)           { m.focused = f }
@@ -408,7 +414,7 @@ func (m Model) View() string {
 	if m.editMode == modeURL {
 		s += "> " + m.editBuf + "\u2588\n\n"
 	} else {
-		s += urlPrefix + m.request.URL + "\n\n"
+		s += urlPrefix + m.highlightVars(m.request.URL) + "\n\n"
 	}
 
 	// Tab bar
@@ -436,7 +442,7 @@ func (m Model) View() string {
 			s += m.renderBodyEdit()
 		} else {
 			if m.request.Body != "" {
-				s += m.request.Body
+				s += m.highlightVars(m.request.Body)
 			} else {
 				s += lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("(no body)")
 			}
@@ -457,14 +463,30 @@ func (m Model) renderKVRows() string {
 			prefix = "> "
 		}
 		if i == m.kvCursor && m.editMode == modeKVKey {
-			lines = append(lines, fmt.Sprintf("%s%s\u2588: %s", prefix, m.editBuf, row.Value))
+			lines = append(lines, fmt.Sprintf("%s%s\u2588: %s", prefix, m.editBuf, m.highlightVars(row.Value)))
 		} else if i == m.kvCursor && m.editMode == modeKVValue {
 			lines = append(lines, fmt.Sprintf("%s%s: %s\u2588", prefix, row.Key, m.editBuf))
 		} else {
-			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value))
+			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, m.highlightVars(row.Value)))
 		}
 	}
 	return strings.Join(lines, "\n")
+}
+
+var varPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
+
+func (m Model) highlightVars(s string) string {
+	goodStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
+	badStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196"))
+
+	return varPattern.ReplaceAllStringFunc(s, func(match string) string {
+		// Extract variable name from {{name}}
+		name := match[2 : len(match)-2]
+		if m.knownVars[name] {
+			return goodStyle.Render(match)
+		}
+		return badStyle.Render(match)
+	})
 }
 
 func (m Model) renderBodyEdit() string {

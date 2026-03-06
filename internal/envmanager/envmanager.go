@@ -30,6 +30,19 @@ func DateVars(now time.Time) map[string]string {
 	}
 }
 
+// KnownVars returns the set of variable names that would resolve,
+// combining date vars and the given environment variables.
+func KnownVars(envVars map[string]string) map[string]bool {
+	known := make(map[string]bool)
+	for k := range DateVars(time.Now()) {
+		known[k] = true
+	}
+	for k := range envVars {
+		known[k] = true
+	}
+	return known
+}
+
 // Resolve replaces {{key}} placeholders with values from vars.
 // Built-in date variables ({{$today}}, etc.) are resolved first,
 // then user vars override them. Unresolved placeholders are left as-is.
