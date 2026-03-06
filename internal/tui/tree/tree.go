@@ -152,13 +152,20 @@ func (m *Model) toggleFolder(collection, path string) {
 // Why: visibleNodes filters to only show requests under expanded folders.
 func (m Model) visibleNodes() []Node {
 	var visible []Node
-	showChildren := false
+	hideBelow := -1 // -1 means nothing hidden
 	for _, n := range m.nodes {
-		if n.IsFolder {
-			visible = append(visible, n)
-			showChildren = n.Expanded
-		} else if showChildren {
-			visible = append(visible, n)
+		// If we're hiding and this node is deeper than the collapsed folder, skip it
+		if hideBelow >= 0 && n.Depth > hideBelow {
+			continue
+		}
+		// We've reached a node at same or lesser depth — stop hiding
+		hideBelow = -1
+
+		visible = append(visible, n)
+
+		// If this is a collapsed folder, hide everything deeper
+		if n.IsFolder && !n.Expanded {
+			hideBelow = n.Depth
 		}
 	}
 	return visible
