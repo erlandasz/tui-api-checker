@@ -1,6 +1,8 @@
 package envpicker
 
 import (
+	"fmt"
+
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/erlandas/postmaniux/internal/domain"
@@ -214,6 +216,22 @@ func (m Model) View() string {
 	if !m.visible {
 		return ""
 	}
+
+	var s string
+	if m.screen == screenEdit {
+		s = m.viewEditScreen()
+	} else {
+		s = m.viewListScreen()
+	}
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("205")).
+		Padding(1, 2).
+		Render(s)
+}
+
+func (m Model) viewListScreen() string {
 	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	cursor := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
 
@@ -225,11 +243,37 @@ func (m Model) View() string {
 		}
 		s += prefix + env.Name + "\n"
 	}
-	s += "\nEnter to select, Esc to cancel"
+	s += "\nEnter select, e edit, Esc cancel"
+	return s
+}
 
-	return lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("205")).
-		Padding(1, 2).
-		Render(s)
+func (m Model) viewEditScreen() string {
+	title := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
+	cursorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("86"))
+	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("240"))
+
+	envName := m.envs[m.editIdx].Name
+	s := title.Render("Edit: "+envName) + "\n\n"
+
+	if len(m.kvRows) == 0 {
+		s += dim.Render("(empty)")
+	} else {
+		for i, row := range m.kvRows {
+			prefix := "  "
+			if i == m.kvCursor {
+				prefix = cursorStyle.Render("> ")
+			}
+			if i == m.kvCursor && m.editMode == editKey {
+				s += fmt.Sprintf("%s%s\u2588: %s", prefix, m.editBuf, row.Value)
+			} else if i == m.kvCursor && m.editMode == editValue {
+				s += fmt.Sprintf("%s%s: %s\u2588", prefix, row.Key, m.editBuf)
+			} else {
+				s += fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value)
+			}
+			s += "\n"
+		}
+	}
+
+	s += "\na add, d delete, e edit, Esc save & back"
+	return s
 }
