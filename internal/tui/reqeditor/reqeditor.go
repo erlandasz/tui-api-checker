@@ -3,6 +3,7 @@ package reqeditor
 import (
 	"fmt"
 	"regexp"
+	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -78,6 +79,8 @@ type Model struct {
 	activeField   field
 	editBuf       string
 	editCursor    int
+	acMatches     []string
+	acCursor      int
 	kvRows        []kvRow
 	kvCursor      int
 	bodyLines     []string
@@ -340,6 +343,25 @@ func (m Model) updateBodyMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 }
 
 func (m *Model) handleEditBufKey(msg tea.KeyPressMsg) {
+	// Autocomplete navigation when dropdown is active
+	if len(m.acMatches) > 0 {
+		switch msg.String() {
+		case "down":
+			if m.acCursor < len(m.acMatches)-1 {
+				m.acCursor++
+			}
+			return
+		case "up":
+			if m.acCursor > 0 {
+				m.acCursor--
+			}
+			return
+		case "tab":
+			m.acComplete()
+			return
+		}
+	}
+
 	switch msg.String() {
 	case "left":
 		if m.editCursor > 0 {
@@ -361,6 +383,55 @@ func (m *Model) handleEditBufKey(msg tea.KeyPressMsg) {
 			m.editCursor += len(key.Text)
 		}
 	}
+	m.updateAutocomplete()
+}
+
+// updateAutocomplete checks if cursor is inside {{...}} and populates matches.
+func (m *Model) updateAutocomplete() {
+	m.acMatches = nil
+	m.acCursor = 0
+
+	// Find the last {{ before cursor
+	before := m.editBuf[:m.editCursor]
+	openIdx := strings.LastIndex(before, "{{")
+	if openIdx < 0 {
+		return
+	}
+	// Check there's no }} between {{ and cursor
+	after := before[openIdx:]
+	if strings.Contains(after, "}}") {
+		return
+	}
+	// Extract partial variable name typed so far
+	partial := before[openIdx+2:]
+
+	var matches []string
+	for name := range m.knownVars {
+		if strings.HasPrefix(name, partial) {
+			matches = append(matches, name)
+		}
+	}
+	sort.Strings(matches)
+	m.acMatches = matches
+}
+
+// acComplete inserts the selected autocomplete match into the edit buffer.
+func (m *Model) acComplete() {
+	if len(m.acMatches) == 0 {
+		return
+	}
+	match := m.acMatches[m.acCursor]
+
+	before := m.editBuf[:m.editCursor]
+	openIdx := strings.LastIndex(before, "{{")
+	if openIdx < 0 {
+		return
+	}
+	// Replace from {{ to cursor with {{match}}
+	replacement := "{{" + match + "}}"
+	m.editBuf = m.editBuf[:openIdx] + replacement + m.editBuf[m.editCursor:]
+	m.editCursor = openIdx + len(replacement)
+	m.acMatches = nil
 }
 
 func (m *Model) syncKVFromRequest() {
@@ -433,7 +504,8 @@ func (m Model) View() string {
 
 	s += methodPrefix + methodStyle.Render(method) + "\n"
 	if m.editMode == modeURL {
-		s += "> " + m.renderEditBuf() + "\n\n"
+		s += "> " + m.renderEditBuf() + "\n"
+		s += m.renderAutocomplete() + "\n"
 	} else {
 		s += urlPrefix + m.highlightVars(m.request.URL) + "\n\n"
 	}
@@ -485,8 +557,14 @@ func (m Model) renderKVRows() string {
 		}
 		if i == m.kvCursor && m.editMode == modeKVKey {
 			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, m.renderEditBuf(), m.highlightVars(row.Value)))
+			if ac := m.renderAutocomplete(); ac != "" {
+				lines = append(lines, ac)
+			}
 		} else if i == m.kvCursor && m.editMode == modeKVValue {
 			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, m.renderEditBuf()))
+			if ac := m.renderAutocomplete(); ac != "" {
+				lines = append(lines, ac)
+			}
 		} else {
 			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, m.highlightVars(row.Value)))
 		}
@@ -500,6 +578,24 @@ func (m Model) renderEditBuf() string {
 		c = len(m.editBuf)
 	}
 	return m.editBuf[:c] + "\u2588" + m.editBuf[c:]
+}
+
+func (m Model) renderAutocomplete() string {
+	if len(m.acMatches) == 0 {
+		return ""
+	}
+	acStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("252")).Background(lipgloss.Color("236"))
+	acSelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(lipgloss.Color("86"))
+
+	var lines []string
+	for i, match := range m.acMatches {
+		style := acStyle
+		if i == m.acCursor {
+			style = acSelStyle
+		}
+		lines = append(lines, style.Render(" {{"+match+"}} "))
+	}
+	return "    " + strings.Join(lines, "\n    ") + "\n"
 }
 
 var varPattern = regexp.MustCompile(`\{\{([^}]+)\}\}`)
