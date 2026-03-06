@@ -121,8 +121,30 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			} else if m.activeField > fieldMethod {
 				m.activeField--
 			}
+		case "a":
+			if m.activeField == fieldContent && (m.activeTab == TabHeaders || m.activeTab == TabParams) {
+				m.kvRows = append(m.kvRows, kvRow{})
+				m.kvCursor = len(m.kvRows) - 1
+				m.editMode = modeKVKey
+				m.editBuf = ""
+			}
+		case "d":
+			if m.activeField == fieldContent && (m.activeTab == TabHeaders || m.activeTab == TabParams) {
+				if len(m.kvRows) > 0 {
+					m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
+					if m.kvCursor >= len(m.kvRows) && m.kvCursor > 0 {
+						m.kvCursor--
+					}
+					m.syncKVToRequest()
+				}
+			}
 		case "e", "enter":
-			if m.activeField == fieldURL {
+			if m.activeField == fieldContent && (m.activeTab == TabHeaders || m.activeTab == TabParams) {
+				if len(m.kvRows) > 0 {
+					m.editMode = modeKVKey
+					m.editBuf = m.kvRows[m.kvCursor].Key
+				}
+			} else if m.activeField == fieldURL {
 				m.editMode = modeURL
 				m.editBuf = m.request.URL
 			}
@@ -160,6 +182,10 @@ func (m Model) updateEditMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch m.editMode {
 	case modeURL:
 		return m.updateURLMode(msg)
+	case modeKVKey:
+		return m.updateKVKeyMode(msg)
+	case modeKVValue:
+		return m.updateKVValueMode(msg)
 	}
 	return m, nil
 }
@@ -168,6 +194,54 @@ func (m Model) updateURLMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
 		m.request.URL = m.editBuf
+		m.editMode = modeNone
+	case "esc", "escape":
+		m.editMode = modeNone
+	case "backspace":
+		if len(m.editBuf) > 0 {
+			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			m.editBuf += key.Text
+		}
+	}
+	return m, nil
+}
+
+func (m Model) updateKVKeyMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.kvRows[m.kvCursor].Key = m.editBuf
+		m.editMode = modeKVValue
+		m.editBuf = m.kvRows[m.kvCursor].Value
+	case "esc", "escape":
+		if m.kvRows[m.kvCursor].Key == "" && m.kvRows[m.kvCursor].Value == "" {
+			m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
+			if m.kvCursor >= len(m.kvRows) && m.kvCursor > 0 {
+				m.kvCursor--
+			}
+		}
+		m.editMode = modeNone
+	case "backspace":
+		if len(m.editBuf) > 0 {
+			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			m.editBuf += key.Text
+		}
+	}
+	return m, nil
+}
+
+func (m Model) updateKVValueMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.kvRows[m.kvCursor].Value = m.editBuf
+		m.syncKVToRequest()
 		m.editMode = modeNone
 	case "esc", "escape":
 		m.editMode = modeNone
@@ -287,7 +361,13 @@ func (m Model) renderKVRows() string {
 		if m.focused && m.activeField == fieldContent && i == m.kvCursor {
 			prefix = "> "
 		}
-		lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value))
+		if i == m.kvCursor && m.editMode == modeKVKey {
+			lines = append(lines, fmt.Sprintf("%s%s\u2588: %s", prefix, m.editBuf, row.Value))
+		} else if i == m.kvCursor && m.editMode == modeKVValue {
+			lines = append(lines, fmt.Sprintf("%s%s: %s\u2588", prefix, row.Key, m.editBuf))
+		} else {
+			lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value))
+		}
 	}
 	return strings.Join(lines, "\n")
 }
