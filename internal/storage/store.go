@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/erlandas/postmaniux/internal/domain"
 )
@@ -94,6 +95,25 @@ func (s *FileStore) ListEnvironments(_ context.Context) ([]string, error) {
 		}
 	}
 	return names, nil
+}
+
+func (s *FileStore) activeEnvPath() string {
+	return filepath.Join(s.root, "active_env")
+}
+
+func (s *FileStore) SaveActiveEnv(name string) error {
+	if err := os.MkdirAll(s.root, 0755); err != nil {
+		return err
+	}
+	return os.WriteFile(s.activeEnvPath(), []byte(name), 0644)
+}
+
+func (s *FileStore) LoadActiveEnv() string {
+	data, err := os.ReadFile(s.activeEnvPath())
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(data))
 }
 
 func writeJSON(path string, v any) error {

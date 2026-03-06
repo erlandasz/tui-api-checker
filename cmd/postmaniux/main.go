@@ -85,7 +85,22 @@ func initialModel(store *storage.FileStore) model {
 		client:      httpclient.NewClient(),
 	}
 	m.tree.SetFocused(true)
-	m.reqEditor.SetEnvironment(nil) // initialize with date vars only
+
+	// Restore last active environment
+	if lastEnv := store.LoadActiveEnv(); lastEnv != "" {
+		for _, env := range envs {
+			if env.Name == lastEnv {
+				e := env
+				m.activeEnv = &e
+				m.reqEditor.SetEnvironment(e.Variables)
+				m.status = fmt.Sprintf("Environment: %s", e.Name)
+				break
+			}
+		}
+	}
+	if m.activeEnv == nil {
+		m.reqEditor.SetEnvironment(nil)
+	}
 	return m
 }
 
@@ -155,6 +170,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		env := msg.Env
 		m.activeEnv = &env
 		m.reqEditor.SetEnvironment(env.Variables)
+		m.store.SaveActiveEnv(env.Name)
 		m.status = fmt.Sprintf("Environment: %s", env.Name)
 		return m, nil
 
