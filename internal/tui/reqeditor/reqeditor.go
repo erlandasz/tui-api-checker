@@ -9,6 +9,29 @@ import (
 	"github.com/erlandas/postmaniux/internal/domain"
 )
 
+type editMode int
+
+const (
+	modeNone editMode = iota
+	modeURL
+	modeKVKey
+	modeKVValue
+	modeBody
+)
+
+type field int
+
+const (
+	fieldMethod field = iota
+	fieldURL
+	fieldContent
+)
+
+type kvRow struct {
+	Key   string
+	Value string
+}
+
 type Tab int
 
 const (
@@ -38,6 +61,15 @@ type Model struct {
 	focused   bool
 	width     int
 	height    int
+
+	editMode      editMode
+	activeField   field
+	editBuf       string
+	kvRows        []kvRow
+	kvCursor      int
+	bodyLines     []string
+	bodyCursorRow int
+	bodyCursorCol int
 }
 
 func New() Model {
@@ -56,9 +88,24 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if !m.focused {
 		return m, nil
 	}
+
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
+		// Handle edit modes first
+		if m.editMode != modeNone {
+			return m.updateEditMode(msg)
+		}
+
+		// modeNone keybindings
 		switch msg.String() {
+		case "j", "down":
+			if m.activeField < fieldContent {
+				m.activeField++
+			}
+		case "k", "up":
+			if m.activeField > fieldMethod {
+				m.activeField--
+			}
 		case "tab":
 			m.activeTab = (m.activeTab + 1) % 3
 		case "shift+tab":
@@ -69,6 +116,18 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		}
 	}
+	return m, nil
+}
+
+func (m Model) updateEditMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch m.editMode {
+	case modeURL:
+		return m.updateURLMode(msg)
+	}
+	return m, nil
+}
+
+func (m Model) updateURLMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 	return m, nil
 }
 
@@ -86,7 +145,18 @@ func (m Model) View() string {
 		method = "GET"
 	}
 	s += titleStyle.Render("Request") + "\n"
-	s += methodStyle.Render(method) + " " + m.request.URL + "\n\n"
+
+	methodPrefix := "  "
+	if m.focused && m.activeField == fieldMethod {
+		methodPrefix = "> "
+	}
+	urlPrefix := "  "
+	if m.focused && m.activeField == fieldURL {
+		urlPrefix = "> "
+	}
+
+	s += methodPrefix + methodStyle.Render(method) + "\n"
+	s += urlPrefix + m.request.URL + "\n\n"
 
 	// Tab bar
 	tabs := []Tab{TabHeaders, TabParams, TabBody}
@@ -98,7 +168,11 @@ func (m Model) View() string {
 			tabLine = append(tabLine, inactiveTabStyle.Render(t.String()))
 		}
 	}
-	s += strings.Join(tabLine, "  |  ") + "\n\n"
+	contentPrefix := "  "
+	if m.focused && m.activeField == fieldContent {
+		contentPrefix = "> "
+	}
+	s += contentPrefix + strings.Join(tabLine, "  |  ") + "\n\n"
 
 	// Tab content
 	switch m.activeTab {
