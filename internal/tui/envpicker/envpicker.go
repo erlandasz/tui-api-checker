@@ -52,30 +52,159 @@ func (m Model) Visible() bool { return m.visible }
 
 func (m Model) Init() tea.Cmd { return nil }
 
+func (m *Model) enterEditScreen() {
+	env := m.envs[m.cursor]
+	m.editIdx = m.cursor
+	m.screen = screenEdit
+	m.kvRows = nil
+	for k, v := range env.Variables {
+		m.kvRows = append(m.kvRows, kvRow{Key: k, Value: v})
+	}
+	m.kvCursor = 0
+	m.editMode = editNone
+}
+
+func (m *Model) buildEnvFromRows() domain.Environment {
+	env := m.envs[m.editIdx]
+	env.Variables = make(map[string]string)
+	for _, row := range m.kvRows {
+		if row.Key != "" {
+			env.Variables[row.Key] = row.Value
+		}
+	}
+	m.envs[m.editIdx] = env
+	return env
+}
+
 func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	if !m.visible {
 		return m, nil
 	}
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
-		switch msg.String() {
-		case "j", "down":
-			if m.cursor < len(m.envs)-1 {
-				m.cursor++
-			}
-		case "k", "up":
-			if m.cursor > 0 {
-				m.cursor--
-			}
-		case "enter":
-			if m.cursor < len(m.envs) {
-				env := m.envs[m.cursor]
-				m.visible = false
-				return m, func() tea.Msg { return EnvSelectedMsg{Env: env} }
-			}
-		case "escape", "ctrl+e":
+		if m.screen == screenEdit {
+			return m.updateEditScreen(msg)
+		}
+		return m.updateListScreen(msg)
+	}
+	return m, nil
+}
+
+func (m Model) updateListScreen(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "j", "down":
+		if m.cursor < len(m.envs)-1 {
+			m.cursor++
+		}
+	case "k", "up":
+		if m.cursor > 0 {
+			m.cursor--
+		}
+	case "enter":
+		if m.cursor < len(m.envs) {
+			env := m.envs[m.cursor]
 			m.visible = false
-			return m, func() tea.Msg { return DismissMsg{} }
+			return m, func() tea.Msg { return EnvSelectedMsg{Env: env} }
+		}
+	case "e":
+		if len(m.envs) > 0 {
+			m.enterEditScreen()
+		}
+	case "escape", "ctrl+e":
+		m.visible = false
+		return m, func() tea.Msg { return DismissMsg{} }
+	}
+	return m, nil
+}
+
+func (m Model) updateEditScreen(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch m.editMode {
+	case editKey:
+		return m.updateEditKey(msg)
+	case editValue:
+		return m.updateEditValue(msg)
+	default:
+		return m.updateEditNone(msg)
+	}
+}
+
+func (m Model) updateEditNone(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "j", "down":
+		if m.kvCursor < len(m.kvRows)-1 {
+			m.kvCursor++
+		}
+	case "k", "up":
+		if m.kvCursor > 0 {
+			m.kvCursor--
+		}
+	case "a":
+		m.kvRows = append(m.kvRows, kvRow{})
+		m.kvCursor = len(m.kvRows) - 1
+		m.editMode = editKey
+		m.editBuf = ""
+	case "d":
+		if len(m.kvRows) > 0 {
+			m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
+			if m.kvCursor >= len(m.kvRows) && m.kvCursor > 0 {
+				m.kvCursor--
+			}
+		}
+	case "e", "enter":
+		if len(m.kvRows) > 0 {
+			m.editMode = editKey
+			m.editBuf = m.kvRows[m.kvCursor].Key
+		}
+	case "escape":
+		env := m.buildEnvFromRows()
+		m.screen = screenList
+		return m, func() tea.Msg { return EnvSavedMsg{Env: env} }
+	}
+	return m, nil
+}
+
+func (m Model) updateEditKey(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.kvRows[m.kvCursor].Key = m.editBuf
+		m.editMode = editValue
+		m.editBuf = m.kvRows[m.kvCursor].Value
+	case "escape":
+		if m.kvRows[m.kvCursor].Key == "" && m.kvRows[m.kvCursor].Value == "" {
+			m.kvRows = append(m.kvRows[:m.kvCursor], m.kvRows[m.kvCursor+1:]...)
+			if m.kvCursor >= len(m.kvRows) && m.kvCursor > 0 {
+				m.kvCursor--
+			}
+		}
+		m.editMode = editNone
+	case "backspace":
+		if len(m.editBuf) > 0 {
+			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			m.editBuf += key.Text
+		}
+	}
+	return m, nil
+}
+
+func (m Model) updateEditValue(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.kvRows[m.kvCursor].Value = m.editBuf
+		m.editMode = editNone
+	case "escape":
+		m.editMode = editNone
+	case "backspace":
+		if len(m.editBuf) > 0 {
+			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			m.editBuf += key.Text
 		}
 	}
 	return m, nil
