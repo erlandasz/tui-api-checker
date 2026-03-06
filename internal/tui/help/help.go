@@ -62,6 +62,20 @@ func (m Model) View() string {
 	for _, b := range bindings {
 		s += key.Render(b[0]) + "  " + dim.Render(b[1]) + "\n"
 	}
+	s += "\n" + title.Render("Date Variables") + "\n\n"
+	dateVars := [][2]string{
+		{"{{$today}}", "Current date"},
+		{"{{$yesterday}}", "Yesterday's date"},
+		{"{{$tomorrow}}", "Tomorrow's date"},
+		{"{{$startOfWeek}}", "Monday of current week"},
+		{"{{$endOfWeek}}", "Sunday of current week"},
+		{"{{$startOfMonth}}", "First day of month"},
+		{"{{$endOfMonth}}", "Last day of month"},
+	}
+	for _, b := range dateVars {
+		s += key.Render(b[0]) + "  " + dim.Render(b[1]) + "\n"
+	}
+
 	s += "\nPress ? or Esc to close"
 
 	return lipgloss.NewStyle().

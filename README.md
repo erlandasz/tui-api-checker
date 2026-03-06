@@ -82,6 +82,22 @@ Use `{{variable}}` syntax in URLs, headers, params, and body. Variables are reso
 }
 ```
 
+### Built-in date variables
+
+These resolve automatically — no environment setup needed:
+
+| Variable | Example | Description |
+|---|---|---|
+| `{{$today}}` | `2026-03-06` | Current date |
+| `{{$yesterday}}` | `2026-03-05` | Yesterday |
+| `{{$tomorrow}}` | `2026-03-07` | Tomorrow |
+| `{{$startOfWeek}}` | `2026-03-02` | Monday of current week |
+| `{{$endOfWeek}}` | `2026-03-08` | Sunday of current week |
+| `{{$startOfMonth}}` | `2026-03-01` | First day of month |
+| `{{$endOfMonth}}` | `2026-03-31` | Last day of month |
+
+Use them anywhere you use regular variables: `https://api.example.com/reports?from={{$startOfWeek}}&to={{$endOfWeek}}`
+
 ## Development
 
 ```bash
