@@ -2,6 +2,7 @@ package tree
 
 import (
 	"fmt"
+	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
@@ -46,14 +47,40 @@ func New(collections []domain.Collection) Model {
 			IsFolder:   true,
 			Depth:      0,
 			Collection: col.Name,
+			Path:       "",
 		})
+
+		// Track which sub-folder paths we've already created
+		seen := make(map[string]bool)
+
 		for i := range col.Requests {
+			req := &col.Requests[i]
+			parts := strings.Split(req.Name, " / ")
+
+			// Create intermediate folder nodes for each prefix
+			for j := 0; j < len(parts)-1; j++ {
+				folderPath := strings.Join(parts[:j+1], "/")
+				if seen[folderPath] {
+					continue
+				}
+				seen[folderPath] = true
+				nodes = append(nodes, Node{
+					Name:       parts[j],
+					IsFolder:   true,
+					Depth:      j + 1,
+					Collection: col.Name,
+					Path:       folderPath,
+				})
+			}
+
+			// Add the request leaf node with just the final name segment
 			nodes = append(nodes, Node{
-				Name:       col.Requests[i].Name,
+				Name:       parts[len(parts)-1],
 				IsFolder:   false,
-				Depth:      1,
+				Depth:      len(parts),
 				Collection: col.Name,
-				Request:    &col.Requests[i],
+				Path:       strings.Join(parts[:len(parts)-1], "/"),
+				Request:    req,
 			})
 		}
 	}
