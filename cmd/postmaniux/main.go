@@ -125,15 +125,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+w":
 			m.cycleFocus()
 			return m, nil
-		case "ctrl+s":
-			req := m.reqEditor.Request()
-			if req.URL != "" {
-				if m.activeEnv != nil {
-					req = envmanager.ResolveRequest(req, *m.activeEnv)
-				}
-				return m, m.executeRequest(req)
-			}
-			return m, nil
 		case "ctrl+e":
 			m.envPicker.Toggle()
 			return m, nil
@@ -164,13 +155,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case newreq.RequestCreatedMsg:
 		ctx := context.Background()
 		col, err := m.store.LoadCollection(ctx, msg.Collection)
-		if err == nil {
-			col.Requests = append(col.Requests, msg.Request)
-			if saveErr := m.store.SaveCollection(ctx, col); saveErr != nil {
-				m.err = saveErr
-			}
-		} else {
+		if err != nil {
 			m.err = err
+			return m, nil
+		}
+		col.Requests = append(col.Requests, msg.Request)
+		if saveErr := m.store.SaveCollection(ctx, col); saveErr != nil {
+			m.err = saveErr
+			return m, nil
 		}
 		m.tree.AddRequest(msg.Collection, msg.Request)
 		m.reqEditor.SetRequest(msg.Request)
