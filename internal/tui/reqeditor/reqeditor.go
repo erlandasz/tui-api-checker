@@ -59,13 +59,20 @@ func (t Tab) String() string {
 // SendRequestMsg tells the parent to execute this request.
 type SendRequestMsg struct{ Request domain.Request }
 
+// SaveRequestMsg tells the parent to persist this request to disk.
+type SaveRequestMsg struct {
+	Collection string
+	Request    domain.Request
+}
+
 type Model struct {
-	request   domain.Request
-	activeTab Tab
-	focused   bool
-	width     int
-	height    int
-	knownVars map[string]bool
+	request    domain.Request
+	collection string
+	activeTab  Tab
+	focused    bool
+	width      int
+	height     int
+	knownVars  map[string]bool
 
 	editMode      editMode
 	activeField   field
@@ -81,7 +88,8 @@ func New() Model {
 	return Model{}
 }
 
-func (m *Model) SetRequest(r domain.Request) {
+func (m *Model) SetRequest(collection string, r domain.Request) {
+	m.collection = collection
 	m.request = r
 	m.syncKVFromRequest()
 	m.syncBodyFromRequest()
@@ -182,6 +190,12 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			m.syncKVFromRequest()
 			m.syncBodyFromRequest()
 		case "ctrl+s":
+			col := m.collection
+			req := m.request
+			return m, func() tea.Msg {
+				return SaveRequestMsg{Collection: col, Request: req}
+			}
+		case "ctrl+enter":
 			return m, func() tea.Msg {
 				return SendRequestMsg{Request: m.request}
 			}

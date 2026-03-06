@@ -177,7 +177,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tree.RequestSelectedMsg:
-		m.reqEditor.SetRequest(msg.Request)
+		m.reqEditor.SetRequest(msg.Collection, msg.Request)
 		return m, nil
 
 	case tree.NewRequestMsg:
@@ -199,11 +199,33 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		m.tree.AddRequest(msg.Collection, msg.Request)
-		m.reqEditor.SetRequest(msg.Request)
+		m.reqEditor.SetRequest(msg.Collection, msg.Request)
 		m.status = fmt.Sprintf("Created request: %s", msg.Request.Name)
 		return m, nil
 
 	case newreq.CancelledMsg:
+		return m, nil
+
+	case reqeditor.SaveRequestMsg:
+		ctx := context.Background()
+		col, err := m.store.LoadCollection(ctx, msg.Collection)
+		if err != nil {
+			m.err = err
+			m.status = fmt.Sprintf("Error: %v", err)
+			return m, nil
+		}
+		for i, r := range col.Requests {
+			if r.Name == msg.Request.Name {
+				col.Requests[i] = msg.Request
+				break
+			}
+		}
+		if err := m.store.SaveCollection(ctx, col); err != nil {
+			m.err = err
+			m.status = fmt.Sprintf("Error saving: %v", err)
+		} else {
+			m.status = fmt.Sprintf("Saved: %s", msg.Request.Name)
+		}
 		return m, nil
 
 	case reqeditor.SendRequestMsg:
