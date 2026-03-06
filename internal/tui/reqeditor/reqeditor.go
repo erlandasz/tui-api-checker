@@ -108,6 +108,11 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.activeField > fieldMethod {
 				m.activeField--
 			}
+		case "e", "enter":
+			if m.activeField == fieldURL {
+				m.editMode = modeURL
+				m.editBuf = m.request.URL
+			}
 		case "m":
 			if m.activeField == fieldMethod {
 				current := m.request.Method
@@ -145,6 +150,22 @@ func (m Model) updateEditMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 }
 
 func (m Model) updateURLMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
+	switch msg.String() {
+	case "enter":
+		m.request.URL = m.editBuf
+		m.editMode = modeNone
+	case "esc", "escape":
+		m.editMode = modeNone
+	case "backspace":
+		if len(m.editBuf) > 0 {
+			m.editBuf = m.editBuf[:len(m.editBuf)-1]
+		}
+	default:
+		key := msg.Key()
+		if key.Text != "" {
+			m.editBuf += key.Text
+		}
+	}
 	return m, nil
 }
 
@@ -172,8 +193,13 @@ func (m Model) View() string {
 		urlPrefix = "> "
 	}
 
-	s += methodPrefix + methodStyle.Render(method) + "\n"
-	s += urlPrefix + m.request.URL + "\n\n"
+	if m.editMode == modeURL {
+		s += methodPrefix + methodStyle.Render(method) + "\n"
+		s += methodStyle.Render(method) + " " + m.editBuf + "\u2588\n\n"
+	} else {
+		s += methodPrefix + methodStyle.Render(method) + "\n"
+		s += urlPrefix + m.request.URL + "\n\n"
+	}
 
 	// Tab bar
 	tabs := []Tab{TabHeaders, TabParams, TabBody}
