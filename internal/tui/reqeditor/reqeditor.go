@@ -78,7 +78,10 @@ func New() Model {
 	return Model{}
 }
 
-func (m *Model) SetRequest(r domain.Request) { m.request = r }
+func (m *Model) SetRequest(r domain.Request) {
+	m.request = r
+	m.syncKVFromRequest()
+}
 func (m *Model) SetSize(w, h int)            { m.width = w; m.height = h }
 func (m *Model) SetFocused(f bool)           { m.focused = f }
 func (m Model) Focused() bool                { return m.focused }
@@ -101,11 +104,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		// modeNone keybindings
 		switch msg.String() {
 		case "j", "down":
-			if m.activeField < fieldContent {
+			if m.activeField == fieldContent && (m.activeTab == TabHeaders || m.activeTab == TabParams) {
+				if m.kvCursor < len(m.kvRows)-1 {
+					m.kvCursor++
+				}
+			} else if m.activeField < fieldContent {
 				m.activeField++
 			}
 		case "k", "up":
-			if m.activeField > fieldMethod {
+			if m.activeField == fieldContent && (m.activeTab == TabHeaders || m.activeTab == TabParams) {
+				if m.kvCursor > 0 {
+					m.kvCursor--
+				} else {
+					m.activeField = fieldURL
+				}
+			} else if m.activeField > fieldMethod {
 				m.activeField--
 			}
 		case "e", "enter":
@@ -130,8 +143,10 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			}
 		case "tab":
 			m.activeTab = (m.activeTab + 1) % 3
+			m.syncKVFromRequest()
 		case "shift+tab":
 			m.activeTab = (m.activeTab + 2) % 3
+			m.syncKVFromRequest()
 		case "ctrl+s":
 			return m, func() tea.Msg {
 				return SendRequestMsg{Request: m.request}
@@ -167,6 +182,36 @@ func (m Model) updateURLMode(msg tea.KeyPressMsg) (Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) syncKVFromRequest() {
+	m.kvRows = nil
+	var src map[string]string
+	switch m.activeTab {
+	case TabHeaders:
+		src = m.request.Headers
+	case TabParams:
+		src = m.request.Params
+	}
+	for k, v := range src {
+		m.kvRows = append(m.kvRows, kvRow{Key: k, Value: v})
+	}
+	m.kvCursor = 0
+}
+
+func (m *Model) syncKVToRequest() {
+	kv := make(map[string]string)
+	for _, row := range m.kvRows {
+		if row.Key != "" {
+			kv[row.Key] = row.Value
+		}
+	}
+	switch m.activeTab {
+	case TabHeaders:
+		m.request.Headers = kv
+	case TabParams:
+		m.request.Params = kv
+	}
 }
 
 func (m Model) View() string {
@@ -219,10 +264,8 @@ func (m Model) View() string {
 
 	// Tab content
 	switch m.activeTab {
-	case TabHeaders:
-		s += m.renderMap(m.request.Headers)
-	case TabParams:
-		s += m.renderMap(m.request.Params)
+	case TabHeaders, TabParams:
+		s += m.renderKVRows()
 	case TabBody:
 		if m.request.Body != "" {
 			s += m.request.Body
@@ -234,13 +277,17 @@ func (m Model) View() string {
 	return s
 }
 
-func (m Model) renderMap(kv map[string]string) string {
-	if len(kv) == 0 {
+func (m Model) renderKVRows() string {
+	if len(m.kvRows) == 0 {
 		return lipgloss.NewStyle().Foreground(lipgloss.Color("240")).Render("(empty)")
 	}
 	var lines []string
-	for k, v := range kv {
-		lines = append(lines, fmt.Sprintf("  %s: %s", k, v))
+	for i, row := range m.kvRows {
+		prefix := "  "
+		if m.focused && m.activeField == fieldContent && i == m.kvCursor {
+			prefix = "> "
+		}
+		lines = append(lines, fmt.Sprintf("%s%s: %s", prefix, row.Key, row.Value))
 	}
 	return strings.Join(lines, "\n")
 }
