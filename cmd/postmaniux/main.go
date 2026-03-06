@@ -14,6 +14,7 @@ import (
 	"github.com/erlandas/postmaniux/internal/storage"
 	"github.com/erlandas/postmaniux/internal/tui/envpicker"
 	"github.com/erlandas/postmaniux/internal/tui/help"
+	"github.com/erlandas/postmaniux/internal/tui/newreq"
 	"github.com/erlandas/postmaniux/internal/tui/reqeditor"
 	"github.com/erlandas/postmaniux/internal/tui/respview"
 	"github.com/erlandas/postmaniux/internal/tui/tree"
@@ -35,6 +36,7 @@ type model struct {
 	respView    respview.Model
 	envPicker   envpicker.Model
 	helpOverlay help.Model
+	newReq      newreq.Model
 	store       *storage.FileStore
 	client      *httpclient.Client
 	activeEnv   *domain.Environment
@@ -77,6 +79,7 @@ func initialModel(store *storage.FileStore) model {
 		respView:    respview.New(),
 		envPicker:   envpicker.New(envs),
 		helpOverlay: help.New(),
+		newReq:      newreq.New(),
 		store:       store,
 		client:      httpclient.NewClient(),
 	}
@@ -109,11 +112,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 
+		// When new request modal is visible, delegate all input to it
+		if m.newReq.Visible() {
+			var cmd tea.Cmd
+			m.newReq, cmd = m.newReq.Update(msg)
+			return m, cmd
+		}
+
 		switch msg.String() {
 		case "ctrl+c", "q":
 			return m, tea.Quit
 		case "ctrl+w":
 			m.cycleFocus()
+			return m, nil
+		case "ctrl+s":
+			req := m.reqEditor.Request()
+			if req.URL != "" {
+				if m.activeEnv != nil {
+					req = envmanager.ResolveRequest(req, *m.activeEnv)
+				}
+				return m, m.executeRequest(req)
+			}
 			return m, nil
 		case "ctrl+e":
 			m.envPicker.Toggle()
@@ -136,6 +155,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tree.RequestSelectedMsg:
 		m.reqEditor.SetRequest(msg.Request)
+		return m, nil
+
+	case tree.NewRequestMsg:
+		m.newReq.Show(msg.Collection)
+		return m, nil
+
+	case newreq.RequestCreatedMsg:
+		ctx := context.Background()
+		col, err := m.store.LoadCollection(ctx, msg.Collection)
+		if err == nil {
+			col.Requests = append(col.Requests, msg.Request)
+			if saveErr := m.store.SaveCollection(ctx, col); saveErr != nil {
+				m.err = saveErr
+			}
+		} else {
+			m.err = err
+		}
+		m.tree.AddRequest(msg.Collection, msg.Request)
+		m.reqEditor.SetRequest(msg.Request)
+		return m, nil
+
+	case newreq.CancelledMsg:
 		return m, nil
 
 	case reqeditor.SendRequestMsg:
@@ -262,6 +303,14 @@ func (m model) View() tea.View {
 	// Overlay env picker if visible
 	if m.envPicker.Visible() {
 		overlay := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.envPicker.View())
+		v := tea.NewView(overlay)
+		v.AltScreen = true
+		return v
+	}
+
+	// Overlay new request modal if visible
+	if m.newReq.Visible() {
+		overlay := lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, m.newReq.View())
 		v := tea.NewView(overlay)
 		v.AltScreen = true
 		return v
