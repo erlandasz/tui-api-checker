@@ -3,6 +3,7 @@ package respview
 import (
 	"encoding/json"
 	"fmt"
+	"regexp"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -103,7 +104,63 @@ func (m Model) View() string {
 		visible = visible[:m.height-8]
 	}
 
+	for i, line := range visible {
+		visible[i] = colorizeJSON(line)
+	}
 	s += strings.Join(visible, "\n")
 
 	return s
+}
+
+var (
+	jsonKeyRe    = regexp.MustCompile(`^(\s*)("(?:[^"\\]|\\.)*")(\s*:)`)
+	jsonStringRe = regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
+	jsonNumberRe = regexp.MustCompile(`\b-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?\b`)
+	jsonBoolRe   = regexp.MustCompile(`\b(?:true|false)\b`)
+	jsonNullRe   = regexp.MustCompile(`\bnull\b`)
+
+	keyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("81"))  // cyan — keys
+	strStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("208")) // orange — string values
+	numStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("114")) // green — numbers
+	boolStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("177")) // purple — booleans
+	nullStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("203")) // red — null
+	bracketStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252")) // light gray — brackets
+)
+
+func colorizeJSON(line string) string {
+	// Color the key portion first: "key":
+	line = jsonKeyRe.ReplaceAllStringFunc(line, func(match string) string {
+		parts := jsonKeyRe.FindStringSubmatch(match)
+		if len(parts) == 4 {
+			return parts[1] + keyStyle.Render(parts[2]) + parts[3]
+		}
+		return match
+	})
+
+	// Color values after the colon (or standalone values in arrays)
+	// Process from right to left to avoid offset issues — but regex handles it fine
+	line = jsonNullRe.ReplaceAllStringFunc(line, func(m string) string {
+		return nullStyle.Render(m)
+	})
+	line = jsonBoolRe.ReplaceAllStringFunc(line, func(m string) string {
+		return boolStyle.Render(m)
+	})
+	line = jsonNumberRe.ReplaceAllStringFunc(line, func(m string) string {
+		// Don't colorize numbers inside ANSI escape sequences
+		if strings.Contains(m, "\x1b") {
+			return m
+		}
+		return numStyle.Render(m)
+	})
+
+	// Color remaining uncolored strings (values, not keys which are already colored)
+	line = jsonStringRe.ReplaceAllStringFunc(line, func(m string) string {
+		// Skip already-colored strings (contain ANSI escape)
+		if strings.Contains(m, "\x1b") {
+			return m
+		}
+		return strStyle.Render(m)
+	})
+
+	return line
 }
