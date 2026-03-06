@@ -156,6 +156,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.status = fmt.Sprintf("Environment: %s", env.Name)
 		return m, nil
 
+	case envpicker.EnvSavedMsg:
+		ctx := context.Background()
+		if err := m.store.SaveEnvironment(ctx, msg.Env); err != nil {
+			m.err = err
+			m.status = fmt.Sprintf("Error saving env: %v", err)
+		} else {
+			m.status = fmt.Sprintf("Saved environment: %s", msg.Env.Name)
+			if m.activeEnv != nil && m.activeEnv.Name == msg.Env.Name {
+				env := msg.Env
+				m.activeEnv = &env
+			}
+		}
+		return m, nil
+
 	case envpicker.DismissMsg:
 		return m, nil
 
