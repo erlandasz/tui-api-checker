@@ -172,17 +172,15 @@ func (m Model) visibleNodes() []Node {
 }
 
 func (m *Model) AddRequest(collection string, req domain.Request) {
-	// Find insertion point: after last node of this collection
 	insertIdx := -1
-	folderIdx := -1
 	for i, n := range m.nodes {
-		if n.IsFolder && n.Collection == collection {
-			folderIdx = i
-			m.nodes[i].Expanded = true
+		if n.Collection == collection {
 			insertIdx = i + 1
-		} else if folderIdx >= 0 && n.Collection == collection {
-			insertIdx = i + 1
-		} else if folderIdx >= 0 && n.Collection != collection {
+			// Expand the top-level collection folder
+			if n.IsFolder && n.Path == "" {
+				m.nodes[i].Expanded = true
+			}
+		} else if insertIdx >= 0 {
 			break
 		}
 	}
@@ -195,15 +193,14 @@ func (m *Model) AddRequest(collection string, req domain.Request) {
 		IsFolder:   false,
 		Depth:      1,
 		Collection: collection,
+		Path:       "",
 		Request:    &req,
 	}
 
-	// Insert node at position
 	m.nodes = append(m.nodes, Node{})
 	copy(m.nodes[insertIdx+1:], m.nodes[insertIdx:])
 	m.nodes[insertIdx] = newNode
 
-	// Move cursor to new node in visible list
 	for i, n := range m.visibleNodes() {
 		if !n.IsFolder && n.Request != nil && n.Request.Name == req.Name && n.Collection == collection {
 			m.cursor = i
