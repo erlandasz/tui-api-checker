@@ -16,6 +16,7 @@ type Node struct {
 	Expanded   bool
 	Depth      int
 	Collection string
+	Path       string // folder path, e.g. "Auth/Login". Empty for top-level collection folders.
 	Request    *domain.Request
 }
 
@@ -89,7 +90,7 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 			if m.cursor < len(visible) {
 				node := visible[m.cursor]
 				if node.IsFolder {
-					m.toggleFolder(node.Collection)
+					m.toggleFolder(node.Collection, node.Path)
 				} else if node.Request != nil {
 					return m, func() tea.Msg {
 						return RequestSelectedMsg{
@@ -112,9 +113,9 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m *Model) toggleFolder(name string) {
+func (m *Model) toggleFolder(collection, path string) {
 	for i := range m.nodes {
-		if m.nodes[i].IsFolder && m.nodes[i].Collection == name {
+		if m.nodes[i].IsFolder && m.nodes[i].Collection == collection && m.nodes[i].Path == path {
 			m.nodes[i].Expanded = !m.nodes[i].Expanded
 			break
 		}
