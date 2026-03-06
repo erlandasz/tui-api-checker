@@ -130,6 +130,16 @@ These resolve automatically — no environment setup needed:
 
 Use them anywhere you use regular variables: `https://api.example.com/reports?from={{$startOfWeek}}&to={{$endOfWeek}}`
 
+## Importing from Postman
+
+Export your Postman data (Settings → Data → Export Data), then run:
+
+```bash
+go run scripts/import_postman.go /path/to/postman-export-dir
+```
+
+The export directory should contain `collection/` and/or `environment/` subdirectories with JSON files. The script imports both collections (with nested folder structure preserved) and environments into `~/.postmaniux/`.
+
 ## Development
 
 ```bash
