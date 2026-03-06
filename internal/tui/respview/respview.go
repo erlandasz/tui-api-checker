@@ -82,7 +82,7 @@ func (m Model) View() string {
 	for k, v := range r.Headers {
 		s += fmt.Sprintf("  %s: %s\n", k, v)
 	}
-	s += "\n"
+	s += dimStyle.Render(strings.Repeat("─", 30)) + "\n"
 
 	// Body — try to pretty-print JSON
 	body := r.Body
