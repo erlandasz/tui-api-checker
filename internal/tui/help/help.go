@@ -51,6 +51,7 @@ func (m Model) View() string {
 		{"Ctrl+S", "Send request"},
 		{"Ctrl+E", "Switch environment"},
 		{"?", "Toggle this help"},
+		{"n", "New request (in tree)"},
 		{"q / Ctrl+C", "Quit"},
 	}
 	for _, b := range bindings {
