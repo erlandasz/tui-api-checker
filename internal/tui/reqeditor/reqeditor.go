@@ -32,6 +32,8 @@ type kvRow struct {
 	Value string
 }
 
+var httpMethods = []string{"GET", "POST", "PUT", "PATCH", "DELETE"}
+
 type Tab int
 
 const (
@@ -105,6 +107,21 @@ func (m Model) Update(msg tea.Msg) (Model, tea.Cmd) {
 		case "k", "up":
 			if m.activeField > fieldMethod {
 				m.activeField--
+			}
+		case "m":
+			if m.activeField == fieldMethod {
+				current := m.request.Method
+				if current == "" {
+					current = "GET"
+				}
+				next := httpMethods[0]
+				for i, method := range httpMethods {
+					if method == current {
+						next = httpMethods[(i+1)%len(httpMethods)]
+						break
+					}
+				}
+				m.request.Method = next
 			}
 		case "tab":
 			m.activeTab = (m.activeTab + 1) % 3
