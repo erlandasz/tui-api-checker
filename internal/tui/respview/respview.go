@@ -113,54 +113,49 @@ func (m Model) View() string {
 }
 
 var (
-	jsonKeyRe    = regexp.MustCompile(`^(\s*)("(?:[^"\\]|\\.)*")(\s*:)`)
+	jsonKeyValRe = regexp.MustCompile(`^(\s*)("(?:[^"\\]|\\.)*")(\s*:\s*)(.+)$`)
 	jsonStringRe = regexp.MustCompile(`"(?:[^"\\]|\\.)*"`)
-	jsonNumberRe = regexp.MustCompile(`\b-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?\b`)
-	jsonBoolRe   = regexp.MustCompile(`\b(?:true|false)\b`)
-	jsonNullRe   = regexp.MustCompile(`\bnull\b`)
+	jsonNumberRe = regexp.MustCompile(`-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?`)
+	jsonBoolRe   = regexp.MustCompile(`true|false`)
+	jsonNullRe   = regexp.MustCompile(`null`)
 
-	keyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("81"))  // cyan — keys
-	strStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("208")) // orange — string values
-	numStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("114")) // green — numbers
-	boolStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("177")) // purple — booleans
-	nullStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("203")) // red — null
-	bracketStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("252")) // light gray — brackets
+	keyStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("81"))  // cyan — keys
+	strStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("208")) // orange — string values
+	numStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("114")) // green — numbers
+	boolStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("177")) // purple — booleans
+	nullStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("203")) // red — null
 )
 
 func colorizeJSON(line string) string {
-	// Color the key portion first: "key":
-	line = jsonKeyRe.ReplaceAllStringFunc(line, func(match string) string {
-		parts := jsonKeyRe.FindStringSubmatch(match)
-		if len(parts) == 4 {
-			return parts[1] + keyStyle.Render(parts[2]) + parts[3]
-		}
-		return match
-	})
+	// Try to match "key": value pattern
+	if m := jsonKeyValRe.FindStringSubmatch(line); len(m) == 5 {
+		indent, key, colon, val := m[1], m[2], m[3], m[4]
+		return indent + keyStyle.Render(key) + colon + colorizeValue(val)
+	}
+	// Standalone value (array element, bare value)
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" || trimmed == "{" || trimmed == "}" || trimmed == "[" || trimmed == "]" ||
+		trimmed == "{}" || trimmed == "[]" || trimmed == "}," || trimmed == "]," {
+		return line
+	}
+	indent := line[:len(line)-len(strings.TrimLeft(line, " \t"))]
+	return indent + colorizeValue(trimmed)
+}
 
-	// Color values after the colon (or standalone values in arrays)
-	// Process from right to left to avoid offset issues — but regex handles it fine
-	line = jsonNullRe.ReplaceAllStringFunc(line, func(m string) string {
-		return nullStyle.Render(m)
-	})
-	line = jsonBoolRe.ReplaceAllStringFunc(line, func(m string) string {
-		return boolStyle.Render(m)
-	})
-	line = jsonNumberRe.ReplaceAllStringFunc(line, func(m string) string {
-		// Don't colorize numbers inside ANSI escape sequences
-		if strings.Contains(m, "\x1b") {
-			return m
-		}
-		return numStyle.Render(m)
-	})
+func colorizeValue(val string) string {
+	stripped := strings.TrimRight(val, ", ")
+	trailing := val[len(stripped):]
 
-	// Color remaining uncolored strings (values, not keys which are already colored)
-	line = jsonStringRe.ReplaceAllStringFunc(line, func(m string) string {
-		// Skip already-colored strings (contain ANSI escape)
-		if strings.Contains(m, "\x1b") {
-			return m
-		}
-		return strStyle.Render(m)
-	})
-
-	return line
+	switch {
+	case jsonNullRe.MatchString(stripped) && (stripped == "null"):
+		return nullStyle.Render(stripped) + trailing
+	case jsonBoolRe.MatchString(stripped) && (stripped == "true" || stripped == "false"):
+		return boolStyle.Render(stripped) + trailing
+	case jsonNumberRe.MatchString(stripped) && jsonNumberRe.FindString(stripped) == stripped:
+		return numStyle.Render(stripped) + trailing
+	case jsonStringRe.MatchString(stripped):
+		return strStyle.Render(stripped) + trailing
+	default:
+		return val
+	}
 }
